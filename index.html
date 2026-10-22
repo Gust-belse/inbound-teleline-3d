@@ -1,404 +1,287 @@
 <!DOCTYPE html>
-<html lang="vi" class="dark">
+<html lang="vi">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hệ Thống Giám Sát Băng Chuyền Nhận - Inbound Tele Line 3D</title>
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Three.js -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <style>
-        * { box-sizing: border-box; }
-        body {
-            margin: 0; padding: 0;
-            font-family: system-ui, -apple-system, sans-serif;
-            background-color: #090d16;
-            color: #f1f5f9;
-            overflow: hidden;
-            user-select: none;
-        }
-        .font-mono-num { font-variant-numeric: tabular-nums; font-family: monospace; }
-        .tele-label {
-            position: absolute; top: 0; left: 0;
-            transform: translate(-50%, -100%);
-            pointer-events: auto; cursor: pointer;
-            z-index: 20; will-change: transform;
-            transition: opacity 0.1s;
-        }
-        .industrial-card {
-            background: rgba(15, 23, 42, 0.92);
-            backdrop-filter: blur(12px);
-            border: 1px solid rgba(51, 65, 85, 0.8);
-        }
-    </style>
+  <meta charset="UTF-8">
+  <title>Giám Sát Băng Chuyền Nhận - 3D Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  <style>
+    body { margin: 0; overflow: hidden; background: #0f172a; color: #f8fafc; font-family: system-ui, sans-serif; }
+    .label-3d {
+      position: absolute; transform: translate(-50%, -100%);
+      pointer-events: none; transition: opacity 0.15s; z-index: 10;
+    }
+  </style>
 </head>
-<body class="h-screen w-screen flex flex-col bg-slate-950 text-slate-100">
+<body class="flex flex-col h-screen w-screen">
 
-    <!-- TOP NAVIGATION BAR -->
-    <header class="h-14 bg-slate-900 border-b border-slate-800 px-4 flex items-center justify-between shrink-0 z-40">
-        <div class="flex items-center gap-3">
-            <div class="w-9 h-9 rounded-lg bg-cyan-500 flex items-center justify-center font-bold text-slate-950 shadow">3D</div>
-            <div>
-                <h1 class="font-bold text-sm text-white uppercase tracking-wide">Inbound Tele Line 3D</h1>
-                <p class="text-[11px] text-slate-400">Hệ Thống Giám Sát Băng Chuyền Nhận &amp; Điều Phối Vận Hành</p>
-            </div>
+  <!-- THANH ĐIỀU HƯỚNG TRÊN CÙNG -->
+  <header class="h-12 bg-slate-900 border-b border-slate-700 px-4 flex items-center justify-between shrink-0 z-20">
+    <div class="flex items-center gap-3">
+      <span class="w-3 h-3 rounded-full bg-emerald-400 animate-pulse"></span>
+      <h1 class="font-bold text-sm tracking-wider uppercase text-cyan-400">Hệ Thống Băng Chuyền Nhận (Inbound Tele Line)</h1>
+      <span class="text-xs px-2 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-600">GitHub Pages Mode</span>
+    </div>
+    <div class="flex items-center gap-2">
+      <a href="index.html" class="px-3 py-1.5 text-xs font-semibold rounded bg-cyan-600 text-white">Màn Hình 3D</a>
+      <a href="pic.html" class="px-3 py-1.5 text-xs font-semibold rounded bg-slate-800 text-slate-300 hover:bg-slate-700">Trang Nhập Tên (PIC)</a>
+    </div>
+  </header>
+
+  <!-- MÀN HÌNH 3D + CỘT SỐ LIỆU -->
+  <div class="flex flex-1 overflow-hidden relative">
+    <div id="canvasContainer" class="flex-1 relative h-full overflow-hidden bg-slate-950">
+      <div id="labelsContainer" class="absolute inset-0 pointer-events-none overflow-hidden"></div>
+      <div class="absolute bottom-3 left-3 bg-slate-900/80 border border-slate-700 px-3 py-1.5 rounded text-xs text-slate-400 z-30">
+        Chuột trái: Xoay | Con lăn: Thu phóng | Cập nhật lúc: <span id="lastSyncText" class="text-cyan-400 font-mono">--:--:--</span>
+      </div>
+    </div>
+
+    <!-- CỘT SỐ LIỆU BÊN PHẢI -->
+    <aside class="w-96 bg-slate-900/95 border-l border-slate-700 flex flex-col h-full shrink-0 z-20 overflow-y-auto p-3 space-y-4">
+      <div>
+        <div class="flex justify-between items-center mb-2">
+          <h2 class="text-xs font-bold uppercase tracking-wider text-cyan-400">Số Liệu Từng Tele Line</h2>
+          <span id="totalShiftSum" class="text-xs font-bold bg-cyan-950 text-cyan-300 px-2 py-0.5 rounded border border-cyan-700">Tổng: 0</span>
         </div>
-        <div class="flex items-center gap-2 bg-slate-950 p-1 rounded-xl border border-slate-800">
-            <button id="tab-3d" onclick="switchViewMode('3d')" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-cyan-600 text-white shadow">1. Màn Hình 3D &amp; Số Liệu</button>
-            <button id="tab-pic" onclick="switchViewMode('pic')" class="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-white">2. Trang Nhập Tên NV (PIC)</button>
-        </div>
-        <div class="text-right hidden sm:block">
-            <div id="live-clock" class="font-mono-num text-xs font-bold text-slate-200">11:24:35</div>
-            <div class="text-[10px] text-cyan-400 font-medium">Ca Sáng • Trực tiếp API</div>
-        </div>
-    </header>
+        <table class="w-full text-left border-collapse text-xs">
+          <thead>
+            <tr class="border-b border-slate-700 text-slate-400">
+              <th class="py-1.5">Line / PIC</th>
+              <th class="py-1.5 text-right">Giờ hiện tại</th>
+              <th class="py-1.5 text-right">Tổng ca</th>
+            </tr>
+          </thead>
+          <tbody id="lineTableBody" class="divide-y divide-slate-800"></tbody>
+        </table>
+      </div>
 
-    <!-- MAIN WORKSPACE -->
-    <main class="flex-1 flex overflow-hidden relative">
+      <hr class="border-slate-800">
 
-        <!-- PIC INPUT PAGE -->
-        <section id="pic-page-container" class="hidden h-full overflow-y-auto bg-slate-950 p-6 z-30 w-full">
-            <div class="max-w-4xl mx-auto space-y-4">
-                <div class="industrial-card p-5 rounded-2xl shadow-xl">
-                    <h2 class="text-base font-bold text-white mb-1">Phân Công Nhân Sự Đầu Line (PIC)</h2>
-                    <p class="text-xs text-slate-400 mb-4">Thay đổi tên nhân viên, mã nhân viên và định mức. Dữ liệu sẽ tự động đồng bộ lên mô hình 3D.</p>
-                    <div id="pic-form-rows" class="space-y-3"></div>
-                    <button onclick="saveAndSyncPIC()" class="mt-4 px-5 py-2.5 bg-cyan-600 hover:bg-cyan-500 text-white rounded-xl text-xs font-bold shadow-lg transition">Lưu &amp; Cập Nhật Lên 3D</button>
-                </div>
+      <div>
+        <h2 class="text-xs font-bold uppercase tracking-wider text-amber-400 mb-2">Số Tổng Mỗi Giờ (Hourly API)</h2>
+        <div id="hourlyList" class="space-y-2 text-xs"></div>
+      </div>
+    </aside>
+  </div>
+
+<script>
+  let appState = {
+    lastSync: '--:--:--',
+    lines: [
+      { id: 'L1', name: 'TELE LINE 01', operator: 'Nguyễn Văn An', empId: 'NV01', targetPerHour: 450, currentHourCount: 380, totalShiftCount: 1520, status: 'active' },
+      { id: 'L2', name: 'TELE LINE 02', operator: 'Trần Minh Tâm', empId: 'NV02', targetPerHour: 450, currentHourCount: 410, totalShiftCount: 1680, status: 'active' },
+      { id: 'L3', name: 'TELE LINE 03', operator: 'Lê Hoàng Nam', empId: 'NV03', targetPerHour: 450, currentHourCount: 290, totalShiftCount: 1190, status: 'alert' },
+      { id: 'L4', name: 'TELE LINE 04', operator: 'Phạm Thị Hoa', empId: 'NV04', targetPerHour: 450, currentHourCount: 445, totalShiftCount: 1750, status: 'active' },
+      { id: 'L5', name: 'TELE LINE 05', operator: 'Võ Quốc Bảo', empId: 'NV05', targetPerHour: 450, currentHourCount: 360, totalShiftCount: 1410, status: 'active' }
+    ],
+    hourly: [
+      { hour: '07:00 - 08:00', total: 1850, target: 2000, active: false },
+      { hour: '08:00 - 09:00', total: 2120, target: 2000, active: false },
+      { hour: '09:00 - 10:00', total: 1940, target: 2000, active: false },
+      { hour: '10:00 - 11:00', total: 1885, target: 2000, active: true }
+    ]
+  };
+
+  function loadData() {
+    try {
+      const saved = localStorage.getItem('inbound_system_data');
+      if (saved) {
+        appState = JSON.parse(saved);
+      }
+    } catch(e) {}
+    appState.lastSync = new Date().toLocaleTimeString('vi-VN');
+    renderUI();
+  }
+
+  function renderUI() {
+    try {
+      document.getElementById('lastSyncText').textContent = appState.lastSync;
+      let sumShift = 0;
+      const tbody = document.getElementById('lineTableBody');
+      tbody.innerHTML = '';
+      
+      appState.lines.forEach(l => {
+        sumShift += l.totalShiftCount;
+        const color = l.status === 'alert' ? 'text-rose-400' : 'text-emerald-400';
+        tbody.innerHTML += `
+          <tr>
+            <td class="py-2">
+              <div class="font-bold text-white">${l.name}</div>
+              <div class="text-slate-400">${l.operator} <span class="text-slate-500">(${l.empId})</span></div>
+            </td>
+            <td class="py-2 text-right font-mono font-bold ${color}">${l.currentHourCount} <span class="text-slate-500 font-normal">/ ${l.targetPerHour}</span></td>
+            <td class="py-2 text-right font-mono font-bold text-cyan-300">${l.totalShiftCount.toLocaleString()}</td>
+          </tr>`;
+      });
+      document.getElementById('totalShiftSum').textContent = 'Tổng ca: ' + sumShift.toLocaleString();
+
+      const hList = document.getElementById('hourlyList');
+      hList.innerHTML = '';
+      appState.hourly.forEach(h => {
+        const pct = Math.min(100, Math.round((h.total / (h.target || 1)) * 100));
+        hList.innerHTML += `
+          <div class="p-2 rounded bg-slate-800/70 border ${h.active ? 'border-amber-500/60' : 'border-slate-700'}">
+            <div class="flex justify-between mb-1">
+              <span class="font-mono ${h.active ? 'text-amber-300 font-bold' : 'text-slate-300'}">${h.hour}</span>
+              <span class="font-mono font-bold text-white">${h.total.toLocaleString()} <span class="text-slate-400 font-normal">(${pct}%)</span></span>
             </div>
-        </section>
-
-        <!-- 3D VIEWPORT & DATA SIDEBAR -->
-        <section id="dashboard-3d-container" class="flex-1 flex flex-col lg:flex-row h-full overflow-hidden relative">
-            
-            <!-- 3D CANVAS WRAPPER -->
-            <div id="viewport-wrapper" class="relative flex-1 h-full bg-slate-950 overflow-hidden">
-                <div id="canvas-container" class="w-full h-full absolute inset-0"></div>
-                <div id="labels-overlay-container" class="absolute inset-0 pointer-events-none overflow-hidden"></div>
-                
-                <!-- Quick Controls -->
-                <div class="absolute top-3 left-3 z-30 flex gap-2">
-                    <button onclick="simulateBulkApiBurst()" class="px-3 py-1.5 rounded-xl bg-cyan-600/90 hover:bg-cyan-500 text-white text-xs font-semibold shadow-lg backdrop-blur border border-cyan-400/40 transition">+ Mô Phỏng Bắn Số Liệu API</button>
-                </div>
+            <div class="w-full bg-slate-950 h-1.5 rounded overflow-hidden">
+              <div class="bg-amber-400 h-full" style="width:${pct}%"></div>
             </div>
+          </div>`;
+      });
+      update3DLabelsContent();
+    } catch(e) {}
+  }
 
-            <!-- RIGHT DATA SIDEBAR -->
-            <aside class="w-full lg:w-[440px] xl:w-[480px] h-full bg-slate-900 border-l border-slate-800 flex flex-col z-30 p-3 space-y-3 overflow-y-auto">
-                <div class="industrial-card p-3.5 rounded-xl shadow">
-                    <h2 class="text-xs font-bold uppercase tracking-wider text-cyan-400 mb-2.5 flex items-center justify-between">
-                        <span>Số Liệu Từng Tele Line &amp; PIC</span>
-                        <span class="text-[10px] text-slate-400">Đơn vị: Kiện</span>
-                    </h2>
-                    <div id="sidebar-teleline-rows" class="space-y-2"></div>
-                </div>
+  let scene, camera, renderer, controls;
+  const stationPositions = [];
+  const labelElements = [];
+  const boxes = [];
+  let is3DInitialized = false;
 
-                <div class="industrial-card p-3.5 rounded-xl shadow">
-                    <h2 class="text-xs font-bold uppercase tracking-wider text-emerald-400 mb-2.5">Số Tổng Mỗi Giờ (Hourly API Log)</h2>
-                    <div id="sidebar-hourly-rows" class="space-y-2 text-xs"></div>
-                </div>
-            </aside>
-        </section>
-    </main>
+  function init3D() {
+    if (is3DInitialized) return;
+    const container = document.getElementById('canvasContainer');
+    const width = container.clientWidth;
+    const height = container.clientHeight;
 
-    <!-- CORE SCRIPT -->
-    <script>
-        const STORAGE_KEY = 'INBOUND_STATE_V5';
-        let appState = {
-            supervisorName: 'Trần Quốc Bảo',
-            activeHourIndex: 4,
-            teleLines: [
-                { id: 'TL-01', name: 'TELE LINE 01', operatorName: 'Nguyễn Văn Hùng', staffId: 'NV-101', targetPerHour: 180, status: 'ACTIVE', xPos: -14 },
-                { id: 'TL-02', name: 'TELE LINE 02', operatorName: 'Lê Thị Mỹ Duyên', staffId: 'NV-108', targetPerHour: 180, status: 'ACTIVE', xPos: -7 },
-                { id: 'TL-03', name: 'TELE LINE 03', operatorName: 'Phạm Hoàng Nam', staffId: 'NV-114', targetPerHour: 200, status: 'ACTIVE', xPos: 0 },
-                { id: 'TL-04', name: 'TELE LINE 04', operatorName: 'Võ Minh Tuấn', staffId: 'NV-122', targetPerHour: 170, status: 'ACTIVE', xPos: 7 },
-                { id: 'TL-05', name: 'TELE LINE 05', operatorName: 'Đặng Quốc Khánh', staffId: 'NV-139', targetPerHour: 190, status: 'ACTIVE', xPos: 14 }
-            ],
-            hourlySlots: [
-                { slot: '07:00 - 08:00', counts: [168, 174, 192, 155, 181] },
-                { slot: '08:00 - 09:00', counts: [182, 179, 205, 164, 188] },
-                { slot: '09:00 - 10:00', counts: [175, 186, 198, 148, 195] },
-                { slot: '10:00 - 11:00', counts: [190, 172, 212, 160, 184] },
-                { slot: '11:00 - 12:00', counts: [134, 128, 156, 82, 141] }
-            ]
-        };
+    // Nếu trình duyệt chưa kịp đo kích thước container thì chờ thêm chút
+    if (width === 0 || height === 0) {
+      setTimeout(init3D, 100);
+      return;
+    }
 
-        try {
-            const saved = localStorage.getItem(STORAGE_KEY);
-            if (saved) {
-                const parsed = JSON.parse(saved);
-                if (parsed && parsed.teleLines && parsed.hourlySlots) appState = parsed;
-            }
-        } catch(e) {}
+    try {
+      scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x0b1120);
 
-        function saveState() {
-            try { localStorage.setItem(STORAGE_KEY, JSON.stringify(appState)); } catch(e) {}
+      camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
+      camera.position.set(0, 22, 28);
+
+      renderer = new THREE.WebGLRenderer({ antialias: true });
+      renderer.setSize(width, height);
+      container.appendChild(renderer.domElement);
+
+      controls = new THREE.OrbitControls(camera, renderer.domElement);
+      controls.enableDamping = true;
+
+      scene.add(new THREE.AmbientLight(0xffffff, 0.7));
+      const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+      dirLight.position.set(15, 30, 20);
+      scene.add(dirLight);
+      scene.add(new THREE.GridHelper(40, 40, 0x1e293b, 0x1e293b));
+
+      // Băng chuyền chính
+      const mainBelt = new THREE.Mesh(
+        new THREE.BoxGeometry(30, 0.6, 2.2),
+        new THREE.MeshStandardMaterial({ color: 0x334155 })
+      );
+      mainBelt.position.set(0, 1, -4);
+      scene.add(mainBelt);
+
+      const startX = -10, spacing = 5;
+      const labelsWrap = document.getElementById('labelsContainer');
+
+      for (let i = 0; i < 5; i++) {
+        const x = startX + i * spacing;
+        const branch = new THREE.Mesh(
+          new THREE.BoxGeometry(1.6, 0.5, 9),
+          new THREE.MeshStandardMaterial({ color: 0x475569 })
+        );
+        branch.position.set(x, 1, 1.5);
+        scene.add(branch);
+
+        const operatorMesh = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.45, 0.45, 1.6, 16),
+          new THREE.MeshStandardMaterial({ color: 0x06b6d4 })
+        );
+        operatorMesh.position.set(x, 1.2, 6.8);
+        scene.add(operatorMesh);
+
+        stationPositions.push(new THREE.Vector3(x, 3.2, 6.8));
+
+        const el = document.createElement('div');
+        el.className = 'label-3d bg-slate-900/95 border border-cyan-500/60 rounded px-2.5 py-1 text-center shadow-lg min-w-[125px]';
+        labelsWrap.appendChild(el);
+        labelElements.push(el);
+
+        const box = new THREE.Mesh(
+          new THREE.BoxGeometry(0.8, 0.6, 0.8),
+          new THREE.MeshStandardMaterial({ color: 0xf59e0b })
+        );
+        box.position.set(x, 1.6, 5 - i * 1.5);
+        scene.add(box);
+        boxes.push({ mesh: box });
+      }
+
+      window.addEventListener('resize', () => {
+        const w = container.clientWidth;
+        const h = container.clientHeight;
+        if (w > 0 && h > 0) {
+          camera.aspect = w / h;
+          camera.updateProjectionMatrix();
+          renderer.setSize(w, h);
         }
+      });
 
-        function switchViewMode(mode) {
-            document.getElementById('pic-page-container').className = mode === 'pic' ? 'w-full h-full overflow-y-auto bg-slate-950 p-6 z-30' : 'hidden';
-            document.getElementById('dashboard-3d-container').className = mode === '3d' ? 'flex-1 flex flex-col lg:flex-row h-full overflow-hidden relative' : 'hidden';
-            document.getElementById('tab-3d').className = mode === '3d' ? 'px-3 py-1.5 rounded-lg text-xs font-semibold bg-cyan-600 text-white shadow' : 'px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-white';
-            document.getElementById('tab-pic').className = mode === 'pic' ? 'px-3 py-1.5 rounded-lg text-xs font-semibold bg-cyan-600 text-white shadow' : 'px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-white';
-            
-            if (mode === '3d' && renderer && camera) {
-                setTimeout(onWindowResize, 50);
-            }
+      is3DInitialized = true;
+      animate();
+    } catch(e) {
+      console.error("Lỗi khởi tạo 3D:", e);
+    }
+  }
+
+  function update3DLabelsContent() {
+    try {
+      appState.lines.forEach((line, i) => {
+        if (!labelElements[i]) return;
+        const borderCol = line.status === 'alert' ? 'border-rose-500' : 'border-cyan-500/70';
+        labelElements[i].className = `label-3d bg-slate-900/95 border ${borderCol} rounded px-2.5 py-1 text-center shadow-lg min-w-[130px]`;
+        labelElements[i].innerHTML = `
+          <div class="text-[10px] font-bold text-cyan-400">${line.name}</div>
+          <div class="text-xs font-bold text-white truncate">${line.operator}</div>
+          <div class="text-[11px] font-mono text-emerald-400">${line.currentHourCount} pcs/h | Tổng: ${line.totalShiftCount}</div>
+        `;
+      });
+    } catch(e) {}
+  }
+
+  function animate() {
+    requestAnimationFrame(animate);
+    if (!renderer || !scene || !camera) return;
+    try {
+      if (controls) controls.update();
+
+      boxes.forEach(b => {
+        b.mesh.position.z -= 0.05;
+        if (b.mesh.position.z < -3.5) b.mesh.position.z = 5.8;
+      });
+
+      const container = document.getElementById('canvasContainer');
+      stationPositions.forEach((pos, i) => {
+        const projected = pos.clone().project(camera);
+        const x = (projected.x * 0.5 + 0.5) * container.clientWidth;
+        const y = (-(projected.y * 0.5) + 0.5) * container.clientHeight;
+        if (labelElements[i]) {
+          labelElements[i].style.left = `${x}px`;
+          labelElements[i].style.top = `${y}px`;
+          labelElements[i].style.opacity = projected.z < 1 ? '1' : '0';
         }
+      });
 
-        function formatNum(n) { return Number(n || 0).toLocaleString('en-US'); }
+      renderer.render(scene, camera);
+    } catch(e) {}
+  }
 
-        function renderUI() {
-            // Sidebar Line Table
-            document.getElementById('sidebar-teleline-rows').innerHTML = appState.teleLines.map((l, i) => {
-                const cur = appState.hourlySlots[appState.activeHourIndex].counts[i];
-                const tot = appState.hourlySlots.reduce((sum, s) => sum + s.counts[i], 0);
-                return `<div class="bg-slate-950/70 p-2.5 rounded-xl border border-slate-800 flex justify-between items-center text-xs">
-                    <div>
-                        <span class="font-bold text-cyan-400">${l.name}</span>
-                        <div class="text-slate-200 text-[11px] font-medium mt-0.5">${l.operatorName} <span class="text-slate-500">(${l.staffId})</span></div>
-                    </div>
-                    <div class="text-right font-mono-num">
-                        <span class="text-white font-bold text-sm">${formatNum(cur)}</span><span class="text-slate-500 text-[10px]"> /h</span>
-                        <div class="text-emerald-400 font-bold">Tổng: ${formatNum(tot)}</div>
-                    </div>
-                </div>`;
-            }).join('');
-
-            // Sidebar Hourly Log Table
-            document.getElementById('sidebar-hourly-rows').innerHTML = appState.hourlySlots.map((s, idx) => {
-                const total = s.counts.reduce((a, b) => a + b, 0);
-                const isCurrent = idx === appState.activeHourIndex;
-                return `<div class="flex justify-between items-center bg-slate-950/50 px-3 py-2 rounded-lg border ${isCurrent ? 'border-cyan-500/60 bg-cyan-950/30 text-cyan-200 font-bold' : 'border-slate-800 text-slate-300'} font-mono-num">
-                    <span>${s.slot}</span>
-                    <span class="text-emerald-400 font-bold">${formatNum(total)} kiện</span>
-                </div>`;
-            }).join('');
-
-            // PIC Form Rows
-            document.getElementById('pic-form-rows').innerHTML = appState.teleLines.map((l, i) => `
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-2 bg-slate-900/90 p-3 rounded-xl border border-slate-800 text-xs items-center">
-                    <div>
-                        <span class="text-cyan-400 font-bold text-sm">${l.name}</span>
-                    </div>
-                    <div>
-                        <span class="text-slate-400 text-[10px] uppercase">Tên nhân viên</span>
-                        <input type="text" id="op-${i}" value="${l.operatorName}" class="mt-0.5 w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1.5 text-white">
-                    </div>
-                    <div class="flex gap-2">
-                        <div class="w-1/2">
-                            <span class="text-slate-400 text-[10px] uppercase">Mã NV</span>
-                            <input type="text" id="id-${i}" value="${l.staffId}" class="mt-0.5 w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1.5 text-white font-mono-num">
-                        </div>
-                        <div class="w-1/2">
-                            <span class="text-slate-400 text-[10px] uppercase">Định mức/h</span>
-                            <input type="number" id="tar-${i}" value="${l.targetPerHour}" class="mt-0.5 w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1.5 text-white font-mono-num">
-                        </div>
-                    </div>
-                </div>
-            `).join('');
-        }
-
-        function saveAndSyncPIC() {
-            appState.teleLines.forEach((l, i) => {
-                l.operatorName = document.getElementById(`op-${i}`).value || l.operatorName;
-                l.staffId = document.getElementById(`id-${i}`).value || l.staffId;
-                l.targetPerHour = parseInt(document.getElementById(`tar-${i}`).value, 10) || 180;
-            });
-            saveState();
-            renderUI();
-            updateBadgesDOM();
-            switchViewMode('3d');
-        }
-
-        function simulateBulkApiBurst() {
-            appState.teleLines.forEach((_, i) => {
-                appState.hourlySlots[appState.activeHourIndex].counts[i] += Math.floor(Math.random() * 6) + 2;
-            });
-            saveState();
-            renderUI();
-            updateBadgesDOM();
-        }
-
-        // --- THREE.JS 3D ENGINE ---
-        let scene, camera, renderer;
-        const labelAnchors = [];
-        const movingBoxes = [];
-
-        function init3D() {
-            const container = document.getElementById('canvas-container');
-            const w = container.clientWidth || window.innerWidth;
-            const h = container.clientHeight || window.innerHeight;
-
-            scene = new THREE.Scene();
-            scene.background = new THREE.Color(0x090d16);
-
-            camera = new THREE.PerspectiveCamera(45, w / h, 0.1, 1000);
-            camera.position.set(0, 18, 28);
-            camera.lookAt(0, 0, 0);
-
-            renderer = new THREE.WebGLRenderer({ antialias: true });
-            renderer.setSize(w, h);
-            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-            container.appendChild(renderer.domElement);
-
-            // Lighting
-            scene.add(new THREE.AmbientLight(0xffffff, 0.7));
-            const dirLight = new THREE.DirectionalLight(0xffffff, 0.9);
-            dirLight.position.set(15, 35, 20);
-            scene.add(dirLight);
-
-            // Floor Grid
-            scene.add(new THREE.GridHelper(70, 35, 0x1e293b, 0x111827));
-
-            // Main Conveyor Belt (Băng chuyền chính ngang ở z = 4)
-            const mainBelt = new THREE.Mesh(
-                new THREE.BoxGeometry(44, 0.8, 2.4),
-                new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.4 })
-            );
-            mainBelt.position.set(0, 0.4, 4);
-            scene.add(mainBelt);
-
-            // 5 Tele Lines (5 nhánh băng chuyền nhận)
-            appState.teleLines.forEach((line, idx) => {
-                const group = new THREE.Group();
-                group.position.set(line.xPos, 0, 0);
-
-                // Thân nhánh băng chuyền
-                const branch = new THREE.Mesh(
-                    new THREE.BoxGeometry(1.6, 0.6, 12),
-                    new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.5 })
-                );
-                branch.position.set(0, 0.3, -2);
-                group.add(branch);
-
-                // Vị trí người thao tác (Đầu line)
-                const operatorMark = new THREE.Mesh(
-                    new THREE.CylinderGeometry(0.45, 0.45, 1.5, 16),
-                    new THREE.MeshStandardMaterial({ color: 0x06b6d4 })
-                );
-                operatorMark.position.set(-1.2, 0.7, -7);
-                group.add(operatorMark);
-
-                // Khung neo cho nhãn nổi HTML 3D
-                const anchor = new THREE.Object3D();
-                anchor.position.set(-1.2, 2.8, -7);
-                group.add(anchor);
-                labelAnchors.push(anchor);
-
-                // Kiện hàng chạy trên nhánh
-                const box = new THREE.Mesh(
-                    new THREE.BoxGeometry(0.85, 0.75, 0.85),
-                    new THREE.MeshStandardMaterial({ color: 0xf59e0b, roughness: 0.4 })
-                );
-                box.position.set(0, 0.9, -7 + idx * 2.2);
-                group.add(box);
-                movingBoxes.push({ mesh: box, zMin: -7, zMax: 4 });
-
-                scene.add(group);
-            });
-
-            createBadgesDOM();
-            window.addEventListener('resize', onWindowResize);
-            animate();
-        }
-
-        function createBadgesDOM() {
-            const container = document.getElementById('labels-overlay-container');
-            container.innerHTML = '';
-            appState.teleLines.forEach((line, idx) => {
-                const div = document.createElement('div');
-                div.id = `badge-${idx}`;
-                div.className = 'tele-label industrial-card px-3 py-2 rounded-xl shadow-2xl text-xs border border-cyan-500/60 min-w-[145px]';
-                div.innerHTML = `
-                    <div class="font-bold text-cyan-400 text-[11px] mb-0.5">${line.name}</div>
-                    <div id="b-op-${idx}" class="text-white font-bold truncate max-w-[140px]">${line.operatorName}</div>
-                    <div class="text-[10px] text-emerald-400 font-mono-num mt-1 pt-1 border-t border-slate-800">Giờ hiện tại: <span id="b-hr-${idx}" class="font-bold">0</span></div>
-                `;
-                container.appendChild(div);
-            });
-            updateBadgesDOM();
-        }
-
-        function updateBadgesDOM() {
-            appState.teleLines.forEach((line, idx) => {
-                const opEl = document.getElementById(`b-op-${idx}`);
-                const hrEl = document.getElementById(`b-hr-${idx}`);
-                if (opEl) opEl.textContent = line.operatorName;
-                if (hrEl) hrEl.textContent = formatNum(appState.hourlySlots[appState.activeHourIndex].counts[idx]);
-            });
-        }
-
-        function updateBadgesProjection() {
-            const container = document.getElementById('viewport-wrapper');
-            if (!container || !camera) return;
-            const w = container.clientWidth;
-            const h = container.clientHeight;
-            const v = new THREE.Vector3();
-
-            labelAnchors.forEach((anchor, idx) => {
-                const el = document.getElementById(`badge-${idx}`);
-                if (!el) return;
-                anchor.getWorldPosition(v);
-                v.project(camera);
-                if (v.z > 1) {
-                    el.style.opacity = '0';
-                } else {
-                    const x = (v.x * 0.5 + 0.5) * w;
-                    const y = (v.y * -0.5 + 0.5) * h;
-                    el.style.opacity = '1';
-                    el.style.transform = `translate(-50%, -100%) translate(${x}px, ${y}px)`;
-                }
-            });
-        }
-
-        function onWindowResize() {
-            const container = document.getElementById('canvas-container');
-            if (!container || !renderer || !camera) return;
-            const w = container.clientWidth;
-            const h = container.clientHeight;
-            if (w > 0 && h > 0) {
-                renderer.setSize(w, h);
-                camera.aspect = w / h;
-                camera.updateProjectionMatrix();
-            }
-        }
-
-        function animate() {
-            requestAnimationFrame(animate);
-
-            // Chạy kiện hàng đều đặn trên băng chuyền
-            movingBoxes.forEach(b => {
-                b.mesh.position.z += 0.055;
-                if (b.mesh.position.z > 3.8) b.mesh.position.z = -7;
-            });
-
-            updateBadgesProjection();
-            renderer.render(scene, camera);
-        }
-
-        window.onload = function() {
-            renderUI();
-            init3D();
-            
-            // Đồng hồ thời gian thực
-            setInterval(() => {
-                const now = new Date();
-                document.getElementById('live-clock').textContent = now.toTimeString().split(' ')[0];
-            }, 1000);
-
-            // Tự động giả lập API nhảy số liệu mỗi 3 giây
-            setInterval(() => {
-                appState.teleLines.forEach((_, i) => {
-                    if (Math.random() > 0.35) {
-                        appState.hourlySlots[appState.activeHourIndex].counts[i] += 1;
-                    }
-                });
-                saveState();
-                renderUI();
-                updateBadgesDOM();
-            }, 3000);
-        };
-    </script>
+  window.onload = function() {
+    loadData();
+    // Đợi 100ms để trình duyệt vẽ xong khung giao diện rồi mới khởi tạo 3D
+    setTimeout(init3D, 100);
+    setInterval(loadData, 3000);
+  };
+</script>
 </body>
 </html>
