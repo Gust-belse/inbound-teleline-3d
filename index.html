@@ -1,0 +1,1710 @@
+<!DOCTYPE html>
+<html lang="vi" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hệ Thống Giám Sát Băng Chuyền Nhận - Inbound Tele Line 3D</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Inter & JetBrains Mono for industrial numbers -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Three.js & OrbitControls -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', sans-serif;
+            background-color: #090d16;
+            color: #f1f5f9;
+            overflow: hidden;
+            user-select: none;
+        }
+        .font-mono-num {
+            font-family: 'JetBrains Mono', monospace;
+            font-variant-numeric: tabular-nums;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(15, 23, 42, 0.6);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(71, 85, 105, 0.8);
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(56, 189, 248, 0.8);
+        }
+
+        /* 3D Floating Label Badges */
+        .tele-label {
+            position: absolute;
+            top: 0;
+            left: 0;
+            transform: translate(-50%, -100%);
+            pointer-events: auto;
+            cursor: pointer;
+            transition: border-color 0.2s, box-shadow 0.2s;
+            z-index: 20;
+            will-change: transform;
+        }
+        .tele-label::after {
+            content: '';
+            position: absolute;
+            bottom: -7px;
+            left: 50%;
+            transform: translateX(-50%);
+            border-width: 7px 6px 0;
+            border-style: solid;
+            border-color: #0ea5e9 transparent transparent transparent;
+        }
+        .tele-label.status-paused::after {
+            border-color: #f59e0b transparent transparent transparent;
+        }
+        .tele-label.status-maintenance::after {
+            border-color: #ef4444 transparent transparent transparent;
+        }
+
+        /* +1 Box Pop Animation */
+        @keyframes floatUpFade {
+            0% {
+                opacity: 1;
+                transform: translate(-50%, 0) scale(0.9);
+            }
+            100% {
+                opacity: 0;
+                transform: translate(-50%, -26px) scale(1.15);
+            }
+        }
+        .pop-counter {
+            animation: floatUpFade 0.85s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        /* Glass industrial panels */
+        .industrial-card {
+            background: rgba(15, 23, 42, 0.88);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(51, 65, 85, 0.75);
+        }
+    </style>
+</head>
+<body class="h-screen w-screen flex flex-col bg-slate-950 text-slate-100">
+
+    <!-- ================= TOP NAVIGATION BAR ================= -->
+    <header class="h-14 bg-slate-900/95 border-b border-slate-800 px-4 flex items-center justify-between shrink-0 z-40 shadow-lg">
+        <!-- Left: Logo & System Name -->
+        <div class="flex items-center gap-3">
+            <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center shadow-md shadow-cyan-500/20 border border-cyan-400/30">
+                <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
+                </svg>
+            </div>
+            <div>
+                <div class="flex items-center gap-2">
+                    <h1 class="font-bold text-sm md:text-base tracking-tight text-white uppercase">
+                        Inbound Tele Line 3D
+                    </h1>
+                    <span class="hidden sm:inline-flex items-center px-2 py-0.5 rounded text-[10px] font-mono-num font-semibold bg-cyan-500/15 text-cyan-300 border border-cyan-500/30">
+                        WMS-API v2.4
+                    </span>
+                </div>
+                <p class="text-[11px] text-slate-400 hidden sm:block">
+                    Hệ Thống Giám Sát Băng Chuyền Nhận &amp; Điều Phối Nhân Sự Đầu Line
+                </p>
+            </div>
+        </div>
+
+        <!-- Center: Page / View Switcher Tabs -->
+        <div class="flex items-center bg-slate-950 p-1 rounded-xl border border-slate-800 gap-1">
+            <button id="tab-3d" onclick="switchViewMode('3d')" class="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 bg-cyan-600 text-white shadow">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 10l-2 1m0 0l-2-1m2 1v2.5M20 7l-2 1m2-1l-2-1m2 1v2.5M14 4l-2-1-2 1M4 7l2-1M4 7l2 1M4 7v2.5M12 21l-2-1m2 1l2-1m-2 1v-2.5M6 18l-2-1v-2.5M18 18l2-1v-2.5"/>
+                </svg>
+                <span>1. Màn Hình 3D &amp; Số Liệu</span>
+            </button>
+
+            <button id="tab-pic" onclick="switchViewMode('pic')" class="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 text-slate-400 hover:text-white hover:bg-slate-800/60">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
+                </svg>
+                <span>2. Trang Nhập Tên NV (PIC)</span>
+            </button>
+
+            <button id="tab-split" onclick="switchViewMode('split')" class="hidden lg:flex px-3 py-1.5 rounded-lg text-xs font-semibold transition-all items-center gap-1.5 text-slate-400 hover:text-white hover:bg-slate-800/60" title="Mở song song 2 trang để test đồng bộ trực tiếp">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7"/>
+                </svg>
+                <span>Song Song (Test Đồng Bộ)</span>
+            </button>
+        </div>
+
+        <!-- Right: API Status & Live Clock -->
+        <div class="flex items-center gap-3">
+            <div class="hidden md:flex items-center gap-2 bg-slate-950/90 border border-slate-800 px-3 py-1.5 rounded-lg">
+                <span id="api-status-dot" class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping"></span>
+                <span id="api-status-dot-solid" class="w-2.5 h-2.5 rounded-full bg-emerald-500 -ml-4"></span>
+                <div class="text-[11px] leading-tight">
+                    <span class="text-slate-400">API:</span>
+                    <span id="header-api-state" class="font-semibold text-emerald-400">LIVE SYNC (3s)</span>
+                </div>
+            </div>
+
+            <div class="text-right hidden sm:block">
+                <div id="live-clock" class="font-mono-num text-xs font-bold text-slate-200">11:24:35</div>
+                <div id="current-shift-label" class="text-[10px] text-cyan-400 font-medium">Ca Sáng • Khung 11:00 - 12:00</div>
+            </div>
+        </div>
+    </header>
+
+    <!-- ================= MAIN WORKSPACE CONTAINER ================= -->
+    <main class="flex-1 flex overflow-hidden relative">
+
+        <!-- ======================================================================= -->
+        <!-- SECTION A: TRANG NHẬP TÊN NHÂN VIÊN - PHÂN CA (PIC MANAGEMENT PAGE)      -->
+        <!-- ======================================================================= -->
+        <section id="pic-page-container" class="hidden h-full overflow-y-auto bg-slate-950 p-4 md:p-6 border-r border-slate-800 z-30">
+            <div class="max-w-5xl mx-auto space-y-6 pb-10">
+
+                <!-- Page Banner & Shift Info -->
+                <div class="industrial-card rounded-2xl p-5 border border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div>
+                        <div class="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs font-semibold mb-2">
+                            <span>TRANG DÀNH CHO PIC / TRƯỞNG CA INBOUND</span>
+                        </div>
+                        <h2 class="text-xl font-bold text-white">Phân Công Nhân Sự Đầu Line &amp; Cấu Hình API</h2>
+                        <p class="text-xs text-slate-400 mt-1">
+                            Nhập tên nhân viên thao tác tại từng đầu Tele Line. Khi bấm <strong>"Đồng Bộ Lên Sơ Đồ 3D"</strong>, dữ liệu nhân sự sẽ hiển thị tức thời trên mô hình 3D và cột số liệu vận hành.
+                        </p>
+                    </div>
+
+                    <div class="flex flex-wrap items-center gap-2 shrink-0">
+                        <button onclick="applyStaffPreset('shiftA')" class="px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium border border-slate-700 transition">
+                            Mẫu Phân Ca 1 (Chuẩn)
+                        </button>
+                        <button onclick="applyStaffPreset('shiftB')" class="px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium border border-slate-700 transition">
+                            Mẫu Phân Ca 2 (Cao Điểm)
+                        </button>
+                        <button onclick="setAllLinesActive()" class="px-3 py-2 rounded-lg bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 text-xs font-semibold border border-emerald-500/30 transition">
+                            Bật Chạy Cả 5 Line
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Supervisor Info & Auto-sync Toggle -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="industrial-card p-4 rounded-xl">
+                        <label class="block text-[11px] uppercase tracking-wider text-slate-400 font-semibold mb-1.5">
+                            PIC Phụ Trách Ca (Supervisor)
+                        </label>
+                        <input id="pic-supervisor-name" type="text" value="Trần Quốc Bảo (PIC Inbound)" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-cyan-500">
+                    </div>
+
+                    <div class="industrial-card p-4 rounded-xl">
+                        <label class="block text-[11px] uppercase tracking-wider text-slate-400 font-semibold mb-1.5">
+                            Khung Giờ Đang Nhận API
+                        </label>
+                        <select id="active-hour-select" onchange="changeActiveHourSlot(this.value)" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-cyan-300 font-mono-num font-semibold focus:outline-none focus:border-cyan-500">
+                            <option value="0">07:00 - 08:00</option>
+                            <option value="1">08:00 - 09:00</option>
+                            <option value="2">09:00 - 10:00</option>
+                            <option value="3">10:00 - 11:00</option>
+                            <option value="4" selected>11:00 - 12:00 (Hiện tại)</option>
+                        </select>
+                    </div>
+
+                    <div class="industrial-card p-4 rounded-xl flex items-center justify-between">
+                        <div>
+                            <div class="text-xs font-semibold text-white">Đồng bộ tức thời (Real-time Sync)</div>
+                            <div class="text-[11px] text-slate-400">Tự động đẩy tên NV lên 3D ngay khi gõ</div>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="auto-sync-pic" checked class="sr-only peer">
+                            <div class="w-11 h-6 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-cyan-500"></div>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Operator Input Table for Tele Line 01 - 05 -->
+                <div class="industrial-card rounded-2xl overflow-hidden border border-slate-800 shadow-xl">
+                    <div class="px-5 py-4 bg-slate-900/90 border-b border-slate-800 flex flex-wrap items-center justify-between gap-3">
+                        <div class="flex items-center gap-2">
+                            <span class="w-2.5 h-2.5 rounded-full bg-cyan-400"></span>
+                            <h3 class="font-bold text-sm md:text-base text-white uppercase tracking-wide">
+                                Bảng Nhập Tên Người Thao Tác Đầu Line (Tele Line 01 ➔ 05)
+                            </h3>
+                        </div>
+                        <button onclick="saveAndSyncPIC()" class="px-4 py-2 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-bold text-xs shadow-lg shadow-cyan-500/20 flex items-center gap-2 transition transform active:scale-95">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                            </svg>
+                            <span>Lưu &amp; Đồng Bộ Lên Màn Hình 3D</span>
+                        </button>
+                    </div>
+
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="bg-slate-900/60 text-[11px] uppercase tracking-wider text-slate-400 border-b border-slate-800">
+                                    <th class="py-3 px-4">Đầu Băng Chuyền</th>
+                                    <th class="py-3 px-4">Tên Người Thao Tác (PIC Nhập)</th>
+                                    <th class="py-3 px-4">Mã Nhân Viên</th>
+                                    <th class="py-3 px-4">Định Mức / Giờ</th>
+                                    <th class="py-3 px-4">Trạng Thái Line</th>
+                                    <th class="py-3 px-4 text-right">Số Liệu API Hiện Tại</th>
+                                </tr>
+                            </thead>
+                            <tbody id="pic-form-rows" class="divide-y divide-slate-800/70 text-sm">
+                                <!-- Rendered dynamically via JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- API Simulator & JSON Structure Inspector -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <!-- Manual API Packet Trigger -->
+                    <div class="industrial-card rounded-2xl p-5 border border-slate-800 flex flex-col justify-between">
+                        <div>
+                            <div class="flex items-center justify-between mb-3">
+                                <h3 class="font-bold text-sm text-white uppercase tracking-wide flex items-center gap-2">
+                                    <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                                    </svg>
+                                    Giả Lập Bắn Dữ Liệu Số Từ API Hệ Thống
+                                </h3>
+                                <span class="text-[11px] font-mono-num text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
+                                    POST /api/v1/inbound/tele-counts
+                                </span>
+                            </div>
+                            <p class="text-xs text-slate-400 mb-4">
+                                Trong thực tế, mắt thần (Sensor) hoặc máy quét mã vạch (DWS) ở mỗi Tele Line sẽ tự động đẩy số kiện qua API. Bạn có thể bấm nút bên dưới để test cộng dồn số liệu tức thì:
+                            </p>
+
+                            <div id="api-manual-triggers" class="space-y-2.5 mb-5">
+                                <!-- Populated via JS for each line -->
+                            </div>
+                        </div>
+
+                        <div class="pt-4 border-t border-slate-800 flex flex-wrap items-center justify-between gap-2">
+                            <button onclick="simulateBulkApiBurst()" class="px-3.5 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs transition flex items-center gap-1.5 shadow">
+                                <span>+ Bắn Lô Hàng Lớn (Tất Cả Line Đang Chạy)</span>
+                            </button>
+                            <button onclick="resetCurrentHourCounts()" class="px-3 py-2 rounded-lg bg-slate-800 hover:bg-rose-950/60 hover:text-rose-300 text-slate-400 text-xs font-medium border border-slate-700 transition">
+                                Reset Số Giờ Hiện Tại
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Expected API JSON Payload -->
+                    <div class="industrial-card rounded-2xl p-5 border border-slate-800 flex flex-col">
+                        <div class="flex items-center justify-between mb-2">
+                            <h3 class="font-bold text-sm text-white uppercase tracking-wide flex items-center gap-2">
+                                <svg class="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/>
+                                </svg>
+                                Cấu Trúc Gói Tin JSON Đồng Bộ API
+                            </h3>
+                            <button onclick="copyApiJsonPayload()" class="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-xs text-cyan-300 border border-slate-700 font-medium transition">
+                                Copy JSON
+                            </button>
+                        </div>
+                        <p class="text-[11px] text-slate-400 mb-3">
+                            Dữ liệu từ <strong>Trang Nhập Tên NV</strong> và <strong>API Đếm Sản Lượng</strong> được gộp chung theo <code>line_id</code>:
+                        </p>
+                        <pre id="json-payload-preview" class="flex-1 bg-slate-950/90 border border-slate-800 rounded-xl p-3 text-[11px] font-mono-num text-emerald-300 overflow-x-auto max-h-64 leading-relaxed"></pre>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- ======================================================================= -->
+        <!-- SECTION B: TRANG 1 - MÀN HÌNH 3D DASHBOARD & CỘT SỐ LIỆU VẬN HÀNH       -->
+        <!-- ======================================================================= -->
+        <section id="dashboard-3d-container" class="flex-1 flex flex-col lg:flex-row h-full overflow-hidden relative">
+
+            <!-- 1. 3D INTERACTIVE VIEWPORT (LEFT / CENTER) -->
+            <div id="viewport-wrapper" class="relative flex-1 h-[52vh] lg:h-full bg-slate-950 overflow-hidden select-none">
+                <!-- Three.js Canvas Mount -->
+                <div id="canvas-container" class="w-full h-full"></div>
+
+                <!-- Floating 2D HTML Overlay Labels for the 5 Tele Lines -->
+                <div id="labels-overlay-container" class="absolute inset-0 pointer-events-none overflow-hidden">
+                    <!-- Populated dynamically via JS for Tele Line 01..05 -->
+                </div>
+
+                <!-- Top-Left Overlay: Scene Info & Camera Presets -->
+                <div class="absolute top-3 left-3 z-30 flex flex-wrap items-center gap-2 pointer-events-auto">
+                    <div class="industrial-card px-3 py-2 rounded-xl flex items-center gap-2 shadow-lg">
+                        <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Góc Nhìn 3D:</span>
+                        <button onclick="setCameraView('overview')" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-cyan-600 text-xs font-medium text-slate-200 hover:text-white transition">
+                            Toàn Cảnh
+                        </button>
+                        <button onclick="setCameraView('heads')" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-cyan-600 text-xs font-medium text-slate-200 hover:text-white transition">
+                            Đầu Line (PIC)
+                        </button>
+                        <button onclick="setCameraView('merge')" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-cyan-600 text-xs font-medium text-slate-200 hover:text-white transition">
+                            Băng Chuyền Chính
+                        </button>
+                    </div>
+
+                    <div class="industrial-card px-3 py-2 rounded-xl flex items-center gap-2 shadow-lg">
+                        <button id="btn-toggle-api" onclick="toggleApiStream()" class="px-2.5 py-1 rounded-lg bg-emerald-600/20 border border-emerald-500/40 text-emerald-300 hover:bg-emerald-600/30 text-xs font-semibold flex items-center gap-1.5 transition">
+                            <span id="stream-btn-dot" class="w-2 h-2 rounded-full bg-emerald-400"></span>
+                            <span id="stream-btn-text">API Tự Động: BẬT</span>
+                        </button>
+                        <button onclick="simulateBulkApiBurst()" class="px-2.5 py-1 rounded-lg bg-cyan-600/20 border border-cyan-500/40 text-cyan-300 hover:bg-cyan-600/30 text-xs font-semibold transition" title="Giả lập gói dữ liệu API vừa đổ về">
+                            + Đồng Bộ Nhanh
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Bottom-Left Overlay: Legend & Quick Helper -->
+                <div class="absolute bottom-3 left-3 z-30 hidden sm:flex items-center gap-4 industrial-card px-3.5 py-2 rounded-xl text-[11px] text-slate-300 pointer-events-auto">
+                    <div class="flex items-center gap-1.5">
+                        <span class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
+                        <span>Đang chạy (Active)</span>
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        <span class="w-2.5 h-2.5 rounded-full bg-amber-400"></span>
+                        <span>Tạm nghỉ (Paused)</span>
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        <span class="w-2.5 h-2.5 rounded-full bg-rose-500"></span>
+                        <span>Bảo trì (Stop)</span>
+                    </div>
+                    <div class="text-slate-500 border-l border-slate-700 pl-3">
+                        Chuột trái: Xoay • Cuộn: Zoom • Click thẻ Line: Phóng tới đầu Line
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2. RIGHT-HAND DATA COLUMN: CỘT SỐ LIỆU VẬN HÀNH (API REAL-TIME) -->
+            <aside class="w-full lg:w-[440px] xl:w-[480px] h-[48vh] lg:h-full bg-slate-900/95 border-t lg:border-t-0 lg:border-l border-slate-800 flex flex-col shrink-0 z-30 shadow-2xl">
+
+                <!-- Column Header -->
+                <div class="px-4 py-3 bg-slate-950/80 border-b border-slate-800 flex items-center justify-between shrink-0">
+                    <div>
+                        <h2 class="font-bold text-sm text-white uppercase tracking-wider flex items-center gap-2">
+                            <svg class="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                            </svg>
+                            <span>Cột Số Liệu Vận Hành (API)</span>
+                        </h2>
+                        <p class="text-[11px] text-slate-400">
+                            PIC ca: <span id="sidebar-pic-supervisor" class="text-slate-200 font-medium">Trần Quốc Bảo (PIC Inbound)</span>
+                        </p>
+                    </div>
+                    <button onclick="switchViewMode('pic')" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-cyan-300 border border-slate-700 text-xs font-semibold flex items-center gap-1 transition">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
+                        </svg>
+                        <span>Đổi Tên NV</span>
+                    </button>
+                </div>
+
+                <!-- Top Summary KPI Strip -->
+                <div class="grid grid-cols-3 gap-2 p-3 bg-slate-950/50 border-b border-slate-800 shrink-0">
+                    <div class="bg-slate-900/90 border border-slate-800 rounded-xl p-2.5">
+                        <div class="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Số Tổng Giờ Hiện Tại</div>
+                        <div class="flex items-baseline gap-1 mt-0.5">
+                            <span id="kpi-current-hour-total" class="font-mono-num text-xl font-extrabold text-cyan-400">0</span>
+                            <span class="text-[10px] text-slate-400">kiện</span>
+                        </div>
+                        <div id="kpi-current-hour-slot" class="text-[10px] text-slate-500 font-mono-num">Khung 11:00 - 12:00</div>
+                    </div>
+
+                    <div class="bg-slate-900/90 border border-slate-800 rounded-xl p-2.5">
+                        <div class="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Tổng Lũy Kế Ca</div>
+                        <div class="flex items-baseline gap-1 mt-0.5">
+                            <span id="kpi-shift-grand-total" class="font-mono-num text-xl font-extrabold text-emerald-400">0</span>
+                            <span class="text-[10px] text-slate-400">kiện</span>
+                        </div>
+                        <div class="text-[10px] text-slate-500">5 Tele Line cộng dồn</div>
+                    </div>
+
+                    <div class="bg-slate-900/90 border border-slate-800 rounded-xl p-2.5">
+                        <div class="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Tốc Độ / Line Chạy</div>
+                        <div class="flex items-baseline gap-1 mt-0.5">
+                            <span id="kpi-active-lines" class="font-mono-num text-xl font-extrabold text-amber-400">4/5</span>
+                            <span class="text-[10px] text-slate-400">line</span>
+                        </div>
+                        <div id="kpi-last-api-sync" class="text-[10px] text-emerald-400 font-mono-num">Sync: vừa xong</div>
+                    </div>
+                </div>
+
+                <!-- Scrollable Content Area: Per-Tele-Line Table + Hourly Total Table -->
+                <div class="flex-1 overflow-y-auto p-3 space-y-4">
+
+                    <!-- PART 1: SỐ LIỆU TỪNG TELE LINE (MỖI TELE LINE BAO NHIÊU SỐ & TÊN NV) -->
+                    <div class="bg-slate-950/70 border border-slate-800 rounded-xl overflow-hidden">
+                        <div class="px-3.5 py-2.5 bg-slate-900 border-b border-slate-800 flex items-center justify-between">
+                            <span class="text-xs font-bold uppercase tracking-wider text-cyan-300 flex items-center gap-1.5">
+                                <span class="w-2 h-2 rounded-full bg-cyan-400"></span>
+                                1. Số Liệu Từng Tele Line &amp; Người Thao Tác
+                            </span>
+                            <span class="text-[10px] font-mono-num text-slate-400">Đơn vị: Kiện</span>
+                        </div>
+
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left border-collapse">
+                                <thead>
+                                    <tr class="text-[10px] uppercase tracking-wider text-slate-400 bg-slate-900/40 border-b border-slate-800">
+                                        <th class="py-2 px-3">Tele Line / Nhân Viên</th>
+                                        <th class="py-2 px-2 text-right">Giờ Hiện Tại</th>
+                                        <th class="py-2 px-2 text-right">Tổng Ca</th>
+                                        <th class="py-2 px-3 text-right">Tiến Độ Giờ</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="sidebar-teleline-rows" class="divide-y divide-slate-800/60 text-xs">
+                                    <!-- Populated dynamically via JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- PART 2: SỐ TỔNG CỦA MỖI GIỜ (HOURLY TOTAL TỪ API) -->
+                    <div class="bg-slate-950/70 border border-slate-800 rounded-xl overflow-hidden">
+                        <div class="px-3.5 py-2.5 bg-slate-900 border-b border-slate-800 flex items-center justify-between">
+                            <span class="text-xs font-bold uppercase tracking-wider text-emerald-300 flex items-center gap-1.5">
+                                <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+                                2. Số Tổng Của Mỗi Giờ (Hourly API Log)
+                            </span>
+                            <span class="text-[10px] text-slate-400">Chi tiết từng khung giờ</span>
+                        </div>
+
+                        <!-- Mini Visual Hourly Bar Chart -->
+                        <div class="p-3 border-b border-slate-800/80 bg-slate-900/30">
+                            <div id="hourly-bar-chart" class="h-24 flex items-end justify-between gap-2 pt-4 px-1">
+                                <!-- Populated via JS -->
+                            </div>
+                        </div>
+
+                        <!-- Hourly Breakdown Table (Shows each hour's total + per-line numbers) -->
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left border-collapse">
+                                <thead>
+                                    <tr class="text-[10px] uppercase tracking-wider text-slate-400 bg-slate-900/40 border-b border-slate-800">
+                                        <th class="py-2 px-3">Khung Giờ</th>
+                                        <th class="py-2 px-1.5 text-right text-slate-500">TL1</th>
+                                        <th class="py-2 px-1.5 text-right text-slate-500">TL2</th>
+                                        <th class="py-2 px-1.5 text-right text-slate-500">TL3</th>
+                                        <th class="py-2 px-1.5 text-right text-slate-500">TL4</th>
+                                        <th class="py-2 px-1.5 text-right text-slate-500">TL5</th>
+                                        <th class="py-2 px-3 text-right text-emerald-400 font-bold">Số Tổng Giờ</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="sidebar-hourly-rows" class="divide-y divide-slate-800/60 text-xs font-mono-num">
+                                    <!-- Populated dynamically via JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                </div>
+            </aside>
+        </section>
+
+    </main>
+
+    <!-- ================= TOAST NOTIFICATION ================= -->
+    <div id="toast-notification" class="fixed bottom-5 right-5 z-50 pointer-events-none opacity-0 translate-y-3 transition-all duration-300">
+        <div class="bg-slate-900/95 border border-cyan-500/50 text-white px-4 py-3 rounded-xl shadow-2xl flex items-center gap-3">
+            <div class="w-7 h-7 rounded-lg bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center text-cyan-300 shrink-0">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                </svg>
+            </div>
+            <div>
+                <div id="toast-title" class="text-xs font-bold text-white">Đã đồng bộ dữ liệu!</div>
+                <div id="toast-desc" class="text-[11px] text-slate-300">Tên nhân viên đã được cập nhật lên sơ đồ 3D.</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= APPLICATION LOGIC & 3D ENGINE ================= -->
+    <script>
+        // =========================================================================
+        // 1. CENTRALIZED STATE (SHARED BETWEEN PIC PAGE, API ENGINE & 3D VIEW)
+        // =========================================================================
+        const STORAGE_KEY = 'INBOUND_TELELINE_STATE_V2';
+
+        const defaultState = {
+            supervisorName: 'Trần Quốc Bảo (PIC Inbound)',
+            activeHourIndex: 4, // 07-08 (0), 08-09 (1), 09-10 (2), 10-11 (3), 11-12 (4)
+            apiLivePolling: true,
+            lastSyncTime: '11:24:30',
+            // 5 Inbound Telescopic Conveyor Lines
+            teleLines: [
+                {
+                    id: 'TL-01',
+                    name: 'TELE LINE 01',
+                    shortName: 'TL1',
+                    operatorName: 'Nguyễn Văn Hùng',
+                    staffId: 'NV-101',
+                    targetPerHour: 180,
+                    status: 'ACTIVE', // ACTIVE | PAUSED | MAINTENANCE
+                    colorHex: 0x06b6d4,
+                    badgeColor: 'cyan',
+                    xPos: -16
+                },
+                {
+                    id: 'TL-02',
+                    name: 'TELE LINE 02',
+                    shortName: 'TL2',
+                    operatorName: 'Lê Thị Mỹ Duyên',
+                    staffId: 'NV-108',
+                    targetPerHour: 180,
+                    status: 'ACTIVE',
+                    colorHex: 0x10b981,
+                    badgeColor: 'emerald',
+                    xPos: -8
+                },
+                {
+                    id: 'TL-03',
+                    name: 'TELE LINE 03',
+                    shortName: 'TL3',
+                    operatorName: 'Phạm Hoàng Nam',
+                    staffId: 'NV-114',
+                    targetPerHour: 200,
+                    status: 'ACTIVE',
+                    colorHex: 0x3b82f6,
+                    badgeColor: 'blue',
+                    xPos: 0
+                },
+                {
+                    id: 'TL-04',
+                    name: 'TELE LINE 04',
+                    shortName: 'TL4',
+                    operatorName: 'Võ Minh Tuấn',
+                    staffId: 'NV-122',
+                    targetPerHour: 170,
+                    status: 'PAUSED',
+                    colorHex: 0xf59e0b,
+                    badgeColor: 'amber',
+                    xPos: 8
+                },
+                {
+                    id: 'TL-05',
+                    name: 'TELE LINE 05',
+                    shortName: 'TL5',
+                    operatorName: 'Đặng Quốc Khánh',
+                    staffId: 'NV-139',
+                    targetPerHour: 190,
+                    status: 'ACTIVE',
+                    colorHex: 0x8b5cf6,
+                    badgeColor: 'violet',
+                    xPos: 16
+                }
+            ],
+            // Hourly Data Log from API (Each hour contains per-line counts)
+            hourlySlots: [
+                { slot: '07:00 - 08:00', counts: [168, 174, 192, 155, 181] },
+                { slot: '08:00 - 09:00', counts: [182, 179, 205, 164, 188] },
+                { slot: '09:00 - 10:00', counts: [175, 186, 198, 148, 195] },
+                { slot: '10:00 - 11:00', counts: [190, 172, 212, 160, 184] },
+                { slot: '11:00 - 12:00', counts: [134, 128, 156, 82, 141] }
+            ]
+        };
+
+        let appState = loadAppState();
+        let currentViewMode = '3d'; // '3d' | 'pic' | 'split'
+
+        function loadAppState() {
+            try {
+                const raw = localStorage.getItem(STORAGE_KEY);
+                if (raw) {
+                    const parsed = JSON.parse(raw);
+                    if (parsed && parsed.teleLines && parsed.hourlySlots) {
+                        return parsed;
+                    }
+                }
+            } catch (e) {
+                console.warn('Fallback to default state:', e);
+            }
+            return JSON.parse(JSON.stringify(defaultState));
+        }
+
+        function saveAppState() {
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(appState));
+            } catch (e) {
+                console.warn('Could not persist state:', e);
+            }
+        }
+
+        // Helper calculations
+        function getLineCurrentHourCount(lineIndex) {
+            const slot = appState.hourlySlots[appState.activeHourIndex];
+            return slot ? (slot.counts[lineIndex] || 0) : 0;
+        }
+
+        function getLineShiftTotal(lineIndex) {
+            return appState.hourlySlots.reduce((acc, slot) => acc + (slot.counts[lineIndex] || 0), 0);
+        }
+
+        function getHourSlotTotal(slotIndex) {
+            const slot = appState.hourlySlots[slotIndex];
+            if (!slot) return 0;
+            return slot.counts.reduce((a, b) => a + b, 0);
+        }
+
+        function getGrandShiftTotal() {
+            return appState.hourlySlots.reduce((acc, _, idx) => acc + getHourSlotTotal(idx), 0);
+        }
+
+        function formatNum(n) {
+            return Number(n || 0).toLocaleString('en-US');
+        }
+
+        // =========================================================================
+        // 2. VIEW MODE SWITCHING (3D VIEW / PIC INPUT PAGE / SPLIT-SCREEN)
+        // =========================================================================
+        function switchViewMode(mode) {
+            currentViewMode = mode;
+            const picContainer = document.getElementById('pic-page-container');
+            const dashContainer = document.getElementById('dashboard-3d-container');
+            const tab3d = document.getElementById('tab-3d');
+            const tabPic = document.getElementById('tab-pic');
+            const tabSplit = document.getElementById('tab-split');
+
+            const inactiveClass = 'px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 text-slate-400 hover:text-white hover:bg-slate-800/60';
+            const activeClass = 'px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 bg-cyan-600 text-white shadow';
+
+            tab3d.className = mode === '3d' ? activeClass : inactiveClass;
+            tabPic.className = mode === 'pic' ? activeClass : inactiveClass;
+            if (tabSplit) {
+                tabSplit.className = mode === 'split'
+                    ? 'hidden lg:flex ' + activeClass
+                    : 'hidden lg:flex ' + inactiveClass;
+            }
+
+            if (mode === '3d') {
+                picContainer.className = 'hidden';
+                dashContainer.className = 'flex-1 flex flex-col lg:flex-row h-full overflow-hidden relative';
+            } else if (mode === 'pic') {
+                picContainer.className = 'w-full h-full overflow-y-auto bg-slate-950 p-4 md:p-6 z-30';
+                dashContainer.className = 'hidden';
+            } else if (mode === 'split') {
+                picContainer.className = 'w-[46%] h-full overflow-y-auto bg-slate-950 p-4 border-r border-slate-800 z-30 shrink-0';
+                dashContainer.className = 'flex-1 flex flex-col xl:flex-row h-full overflow-hidden relative';
+            }
+
+            // Trigger 3D canvas resize on layout change
+            setTimeout(() => {
+                handleWindowResize();
+            }, 60);
+        }
+
+        // =========================================================================
+        // 3. UI RENDERING: RIGHT SIDEBAR, PIC INPUT FORM & FLOATING 3D BADGES
+        // =========================================================================
+        function createFloatingBadgesDOM() {
+            const container = document.getElementById('labels-overlay-container');
+            container.innerHTML = '';
+
+            appState.teleLines.forEach((line, idx) => {
+                const badge = document.createElement('div');
+                badge.id = `floating-badge-${idx}`;
+                badge.className = 'tele-label bg-slate-900/95 border-2 border-cyan-500 rounded-xl px-3 py-2 shadow-2xl min-w-[168px] text-left';
+                badge.onclick = () => focusCameraOnLine(idx);
+
+                badge.innerHTML = `
+                    <div class="flex items-center justify-between gap-2 border-b border-slate-800 pb-1 mb-1">
+                        <span class="font-mono-num text-[11px] font-extrabold tracking-wider text-cyan-400">${line.name}</span>
+                        <span id="badge-status-${idx}" class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-500/20 text-emerald-300">
+                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>Chạy
+                        </span>
+                    </div>
+                    <div class="text-[10px] text-slate-400 uppercase tracking-wider">Người thao tác đầu line:</div>
+                    <div id="badge-operator-${idx}" class="text-xs font-bold text-white truncate max-w-[165px]">${line.operatorName}</div>
+                    <div class="flex items-center justify-between mt-1.5 pt-1 border-t border-slate-800/80 text-[11px] font-mono-num">
+                        <div>
+                            <span class="text-slate-400">Giờ:</span>
+                            <span id="badge-hour-${idx}" class="font-bold text-cyan-300">0</span>
+                        </div>
+                        <div>
+                            <span class="text-slate-400">Tổng:</span>
+                            <span id="badge-total-${idx}" class="font-bold text-emerald-400">0</span>
+                        </div>
+                    </div>
+                    <div id="badge-pop-${idx}" class="pointer-events-none absolute -top-3 left-1/2 -translate-x-1/2"></div>
+                `;
+                container.appendChild(badge);
+            });
+        }
+
+        function updateFloatingBadgesContent() {
+            appState.teleLines.forEach((line, idx) => {
+                const badge = document.getElementById(`floating-badge-${idx}`);
+                if (!badge) return;
+
+                const opEl = document.getElementById(`badge-operator-${idx}`);
+                const hourEl = document.getElementById(`badge-hour-${idx}`);
+                const totalEl = document.getElementById(`badge-total-${idx}`);
+                const statusEl = document.getElementById(`badge-status-${idx}`);
+
+                opEl.textContent = `${line.operatorName || 'Chưa phân công'} (${line.staffId || '--'})`;
+                hourEl.textContent = formatNum(getLineCurrentHourCount(idx));
+                totalEl.textContent = formatNum(getLineShiftTotal(idx));
+
+                badge.classList.remove('status-paused', 'status-maintenance', 'border-cyan-500', 'border-amber-500', 'border-rose-500');
+
+                if (line.status === 'ACTIVE') {
+                    badge.classList.add('border-cyan-500');
+                    statusEl.className = 'inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-500/20 text-emerald-300';
+                    statusEl.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>Đang chạy';
+                } else if (line.status === 'PAUSED') {
+                    badge.classList.add('border-amber-500', 'status-paused');
+                    statusEl.className = 'inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-500/20 text-amber-300';
+                    statusEl.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-amber-400"></span>Tạm nghỉ';
+                } else {
+                    badge.classList.add('border-rose-500', 'status-maintenance');
+                    statusEl.className = 'inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold bg-rose-500/20 text-rose-300';
+                    statusEl.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-rose-400"></span>Bảo trì';
+                }
+            });
+        }
+
+        function triggerBadgePopEffect(lineIndex, addedCount) {
+            const popContainer = document.getElementById(`badge-pop-${lineIndex}`);
+            if (!popContainer) return;
+            const span = document.createElement('div');
+            span.className = 'pop-counter px-2 py-0.5 rounded-full bg-emerald-500 text-slate-950 font-mono-num font-extrabold text-xs shadow-lg';
+            span.textContent = `+${addedCount} kiện`;
+            popContainer.appendChild(span);
+            setTimeout(() => {
+                if (span.parentNode) span.parentNode.removeChild(span);
+            }, 850);
+        }
+
+        // Render Right-hand Data Sidebar (Cột Số Liệu Vận Hành)
+        function renderDataSidebar() {
+            const currentSlot = appState.hourlySlots[appState.activeHourIndex];
+            const currentHourTotal = getHourSlotTotal(appState.activeHourIndex);
+            const grandTotal = getGrandShiftTotal();
+            const activeCount = appState.teleLines.filter(l => l.status === 'ACTIVE').length;
+
+            document.getElementById('sidebar-pic-supervisor').textContent = appState.supervisorName;
+            document.getElementById('kpi-current-hour-total').textContent = formatNum(currentHourTotal);
+            document.getElementById('kpi-current-hour-slot').textContent = `Khung ${currentSlot.slot}`;
+            document.getElementById('kpi-shift-grand-total').textContent = formatNum(grandTotal);
+            document.getElementById('kpi-active-lines').textContent = `${activeCount}/5`;
+            document.getElementById('kpi-last-api-sync').textContent = `API: ${appState.lastSyncTime}`;
+            document.getElementById('current-shift-label').textContent = `Ca Sáng • Khung ${currentSlot.slot}`;
+
+            // 1. Render Per-Tele-Line Table
+            const lineRowsContainer = document.getElementById('sidebar-teleline-rows');
+            lineRowsContainer.innerHTML = appState.teleLines.map((line, idx) => {
+                const hrCount = getLineCurrentHourCount(idx);
+                const totalCount = getLineShiftTotal(idx);
+                const pct = Math.min(100, Math.round((hrCount / Math.max(1, line.targetPerHour)) * 100));
+
+                let statusBadge = `<span class="w-2 h-2 rounded-full bg-emerald-400 inline-block"></span>`;
+                if (line.status === 'PAUSED') statusBadge = `<span class="w-2 h-2 rounded-full bg-amber-400 inline-block"></span>`;
+                if (line.status === 'MAINTENANCE') statusBadge = `<span class="w-2 h-2 rounded-full bg-rose-500 inline-block"></span>`;
+
+                let barColor = 'bg-emerald-500';
+                if (pct < 85) barColor = 'bg-cyan-500';
+                if (pct < 60) barColor = 'bg-amber-500';
+
+                return `
+                    <tr onclick="focusCameraOnLine(${idx})" class="hover:bg-slate-800/50 cursor-pointer transition">
+                        <td class="py-2.5 px-3">
+                            <div class="flex items-center gap-1.5">
+                                ${statusBadge}
+                                <span class="font-mono-num font-bold text-cyan-300">${line.name}</span>
+                            </div>
+                            <div class="text-[11px] text-slate-200 font-medium mt-0.5">
+                                ${line.operatorName} <span class="text-slate-500 font-mono-num">(${line.staffId})</span>
+                            </div>
+                        </td>
+                        <td class="py-2.5 px-2 text-right font-mono-num">
+                            <span class="text-sm font-bold text-white">${formatNum(hrCount)}</span>
+                            <div class="text-[10px] text-slate-500">/ ${line.targetPerHour}</div>
+                        </td>
+                        <td class="py-2.5 px-2 text-right font-mono-num font-bold text-emerald-400 text-sm">
+                            ${formatNum(totalCount)}
+                        </td>
+                        <td class="py-2.5 px-3 text-right w-24">
+                            <div class="text-[10px] font-mono-num font-semibold text-slate-300 mb-1">${pct}%</div>
+                            <div class="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                                <div class="${barColor} h-full rounded-full transition-all duration-300" style="width: ${pct}%"></div>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+
+            // 2. Render Mini Bar Chart for Hourly Totals
+            const chartContainer = document.getElementById('hourly-bar-chart');
+            const maxHourly = Math.max(900, ...appState.hourlySlots.map((_, i) => getHourSlotTotal(i)));
+
+            chartContainer.innerHTML = appState.hourlySlots.map((slotObj, sIdx) => {
+                const total = getHourSlotTotal(sIdx);
+                const heightPct = Math.max(12, Math.round((total / maxHourly) * 100));
+                const isCurrent = sIdx === appState.activeHourIndex;
+
+                return `
+                    <div onclick="changeActiveHourSlot(${sIdx})" class="flex-1 flex flex-col items-center cursor-pointer group">
+                        <div class="text-[10px] font-mono-num font-bold ${isCurrent ? 'text-cyan-300' : 'text-slate-400 group-hover:text-white'} mb-1">
+                            ${formatNum(total)}
+                        </div>
+                        <div class="w-full max-w-[42px] bg-slate-800/80 rounded-t-md h-14 flex items-end p-0.5 border ${isCurrent ? 'border-cyan-500/60' : 'border-slate-700/50'}">
+                            <div class="w-full rounded-t transition-all duration-300 ${isCurrent ? 'bg-gradient-to-t from-cyan-600 to-cyan-400' : 'bg-emerald-600/70 group-hover:bg-emerald-500'}" style="height: ${heightPct}%"></div>
+                        </div>
+                        <div class="text-[9px] font-mono-num mt-1 ${isCurrent ? 'text-cyan-300 font-bold' : 'text-slate-500'}">
+                            ${slotObj.slot.split(' - ')[0]}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            // 3. Render Hourly Breakdown Table (Mỗi Tele Line bao nhiêu số & Số tổng mỗi giờ)
+            const hourlyRowsContainer = document.getElementById('sidebar-hourly-rows');
+            hourlyRowsContainer.innerHTML = appState.hourlySlots.map((slotObj, sIdx) => {
+                const hrTotal = getHourSlotTotal(sIdx);
+                const isCurrent = sIdx === appState.activeHourIndex;
+                const rowClass = isCurrent
+                    ? 'bg-cyan-950/40 text-white font-semibold'
+                    : 'text-slate-300 hover:bg-slate-800/40';
+
+                return `
+                    <tr onclick="changeActiveHourSlot(${sIdx})" class="${rowClass} cursor-pointer transition">
+                        <td class="py-2 px-3 whitespace-nowrap">
+                            <div class="flex items-center gap-1.5">
+                                ${isCurrent ? '<span class="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-ping"></span>' : ''}
+                                <span>${slotObj.slot}</span>
+                            </div>
+                        </td>
+                        <td class="py-2 px-1.5 text-right text-slate-400">${slotObj.counts[0]}</td>
+                        <td class="py-2 px-1.5 text-right text-slate-400">${slotObj.counts[1]}</td>
+                        <td class="py-2 px-1.5 text-right text-slate-400">${slotObj.counts[2]}</td>
+                        <td class="py-2 px-1.5 text-right text-slate-400">${slotObj.counts[3]}</td>
+                        <td class="py-2 px-1.5 text-right text-slate-400">${slotObj.counts[4]}</td>
+                        <td class="py-2 px-3 text-right font-bold ${isCurrent ? 'text-cyan-300' : 'text-emerald-400'}">
+                            ${formatNum(hrTotal)}
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        // Render PIC Input Form & API Simulator Page
+        function renderPICManagementPage() {
+            const supInput = document.getElementById('pic-supervisor-name');
+            if (supInput && document.activeElement !== supInput) {
+                supInput.value = appState.supervisorName;
+            }
+            const hourSelect = document.getElementById('active-hour-select');
+            if (hourSelect) hourSelect.value = String(appState.activeHourIndex);
+
+            const tbody = document.getElementById('pic-form-rows');
+            tbody.innerHTML = appState.teleLines.map((line, idx) => {
+                const hrCount = getLineCurrentHourCount(idx);
+                const totalCount = getLineShiftTotal(idx);
+
+                return `
+                    <tr class="hover:bg-slate-900/40 transition">
+                        <td class="py-3 px-4">
+                            <div class="font-mono-num font-bold text-cyan-400 text-sm">${line.name}</div>
+                            <div class="text-[11px] text-slate-500">Đầu băng chuyền số ${idx + 1}</div>
+                        </td>
+                        <td class="py-3 px-4">
+                            <input
+                                type="text"
+                                id="pic-op-name-${idx}"
+                                value="${line.operatorName}"
+                                oninput="handleLivePicFieldChange(${idx})"
+                                placeholder="Nhập họ tên người thao tác..."
+                                class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-sm text-white font-medium focus:outline-none focus:border-cyan-500"
+                            />
+                        </td>
+                        <td class="py-3 px-4">
+                            <input
+                                type="text"
+                                id="pic-staff-id-${idx}"
+                                value="${line.staffId}"
+                                oninput="handleLivePicFieldChange(${idx})"
+                                placeholder="Mã NV..."
+                                class="w-28 bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-sm font-mono-num text-slate-200 focus:outline-none focus:border-cyan-500"
+                            />
+                        </td>
+                        <td class="py-3 px-4">
+                            <input
+                                type="number"
+                                id="pic-target-${idx}"
+                                value="${line.targetPerHour}"
+                                oninput="handleLivePicFieldChange(${idx})"
+                                min="50"
+                                max="500"
+                                class="w-24 bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-sm font-mono-num text-slate-200 focus:outline-none focus:border-cyan-500"
+                            />
+                        </td>
+                        <td class="py-3 px-4">
+                            <select
+                                id="pic-status-${idx}"
+                                onchange="handleLivePicFieldChange(${idx})"
+                                class="bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-white focus:outline-none focus:border-cyan-500"
+                            >
+                                <option value="ACTIVE" ${line.status === 'ACTIVE' ? 'selected' : ''}>🟢 Đang chạy (Active)</option>
+                                <option value="PAUSED" ${line.status === 'PAUSED' ? 'selected' : ''}>🟡 Tạm nghỉ (Paused)</option>
+                                <option value="MAINTENANCE" ${line.status === 'MAINTENANCE' ? 'selected' : ''}>🔴 Bảo trì (Stop)</option>
+                            </select>
+                        </td>
+                        <td class="py-3 px-4 text-right font-mono-num">
+                            <div class="text-xs text-slate-300">Giờ: <strong id="pic-row-hr-${idx}" class="text-cyan-400">${formatNum(hrCount)}</strong></div>
+                            <div class="text-[11px] text-slate-500">Tổng: <strong id="pic-row-tot-${idx}" class="text-emerald-400">${formatNum(totalCount)}</strong></div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+
+            // Manual API Triggers per line
+            const triggersContainer = document.getElementById('api-manual-triggers');
+            triggersContainer.innerHTML = appState.teleLines.map((line, idx) => `
+                <div class="flex items-center justify-between bg-slate-900/80 border border-slate-800 rounded-xl px-3 py-2">
+                    <div>
+                        <span class="font-mono-num text-xs font-bold text-cyan-400">${line.name}</span>
+                        <span class="text-xs text-slate-300 ml-2">${line.operatorName}</span>
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        <button onclick="pushApiCountToLine(${idx}, 5)" class="px-2.5 py-1 rounded bg-slate-800 hover:bg-cyan-600 text-slate-200 hover:text-white font-mono-num text-xs font-semibold transition">
+                            +5 số
+                        </button>
+                        <button onclick="pushApiCountToLine(${idx}, 15)" class="px-2.5 py-1 rounded bg-slate-800 hover:bg-emerald-600 text-slate-200 hover:text-white font-mono-num text-xs font-semibold transition">
+                            +15 số
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+
+            updateJsonPayloadInspector();
+        }
+
+        function updatePicRowLiveCountsOnly() {
+            appState.teleLines.forEach((_, idx) => {
+                const hrEl = document.getElementById(`pic-row-hr-${idx}`);
+                const totEl = document.getElementById(`pic-row-tot-${idx}`);
+                if (hrEl) hrEl.textContent = formatNum(getLineCurrentHourCount(idx));
+                if (totEl) totEl.textContent = formatNum(getLineShiftTotal(idx));
+            });
+            updateJsonPayloadInspector();
+        }
+
+        function updateJsonPayloadInspector() {
+            const pre = document.getElementById('json-payload-preview');
+            if (!pre) return;
+
+            const currentSlot = appState.hourlySlots[appState.activeHourIndex];
+            const payload = {
+                api_status: "200 OK",
+                sync_timestamp: appState.lastSyncTime,
+                supervisor_pic: appState.supervisorName,
+                active_hour_slot: currentSlot.slot,
+                hourly_total_volume: getHourSlotTotal(appState.activeHourIndex),
+                shift_grand_total: getGrandShiftTotal(),
+                tele_lines: appState.teleLines.map((line, idx) => ({
+                    line_id: line.id,
+                    operator_name: line.operatorName,
+                    staff_id: line.staffId,
+                    status: line.status,
+                    current_hour_count: getLineCurrentHourCount(idx),
+                    shift_total_count: getLineShiftTotal(idx)
+                }))
+            };
+
+            pre.textContent = JSON.stringify(payload, null, 2);
+        }
+
+        // Handle PIC Input Changes
+        function handleLivePicFieldChange(idx) {
+            const autoSync = document.getElementById('auto-sync-pic')?.checked;
+            if (!autoSync) return;
+            collectPicFormValues();
+            syncAllViews();
+        }
+
+        function collectPicFormValues() {
+            const supInput = document.getElementById('pic-supervisor-name');
+            if (supInput) appState.supervisorName = supInput.value.trim() || 'PIC Ca Trực';
+
+            appState.teleLines.forEach((line, idx) => {
+                const nameInput = document.getElementById(`pic-op-name-${idx}`);
+                const idInput = document.getElementById(`pic-staff-id-${idx}`);
+                const targetInput = document.getElementById(`pic-target-${idx}`);
+                const statusSelect = document.getElementById(`pic-status-${idx}`);
+
+                if (nameInput) line.operatorName = nameInput.value.trim() || 'Chưa phân công';
+                if (idInput) line.staffId = idInput.value.trim() || `NV-10${idx + 1}`;
+                if (targetInput) line.targetPerHour = parseInt(targetInput.value, 10) || 180;
+                if (statusSelect) line.status = statusSelect.value;
+            });
+
+            saveAppState();
+            update3DStationStatusLights();
+        }
+
+        function saveAndSyncPIC() {
+            collectPicFormValues();
+            syncAllViews();
+            showToast('Đã đồng bộ tên NV lên 3D!', 'Dữ liệu phân ca của PIC đã hiển thị tại 5 đầu Tele Line.');
+        }
+
+        function applyStaffPreset(presetKey) {
+            const presets = {
+                shiftA: [
+                    { name: 'Nguyễn Văn Hùng', id: 'NV-101', status: 'ACTIVE' },
+                    { name: 'Lê Thị Mỹ Duyên', id: 'NV-108', status: 'ACTIVE' },
+                    { name: 'Phạm Hoàng Nam', id: 'NV-114', status: 'ACTIVE' },
+                    { name: 'Võ Minh Tuấn', id: 'NV-122', status: 'PAUSED' },
+                    { name: 'Đặng Quốc Khánh', id: 'NV-139', status: 'ACTIVE' }
+                ],
+                shiftB: [
+                    { name: 'Trương Quốc Tuấn', id: 'NV-201', status: 'ACTIVE' },
+                    { name: 'Hoàng Thanh Tùng', id: 'NV-204', status: 'ACTIVE' },
+                    { name: 'Bùi Thị Ngọc Ánh', id: 'NV-219', status: 'ACTIVE' },
+                    { name: 'Ngô Gia Bảo', id: 'NV-225', status: 'ACTIVE' },
+                    { name: 'Phan Văn Trị', id: 'NV-231', status: 'ACTIVE' }
+                ]
+            };
+            const list = presets[presetKey];
+            if (!list) return;
+
+            appState.teleLines.forEach((line, idx) => {
+                line.operatorName = list[idx].name;
+                line.staffId = list[idx].id;
+                line.status = list[idx].status;
+            });
+
+            saveAppState();
+            renderPICManagementPage();
+            syncAllViews();
+            update3DStationStatusLights();
+            showToast('Đã nạp danh sách phân ca mẫu!', 'Tên nhân viên tại 5 đầu Tele Line đã được cập nhật.');
+        }
+
+        function setAllLinesActive() {
+            appState.teleLines.forEach(l => l.status = 'ACTIVE');
+            saveAppState();
+            renderPICManagementPage();
+            syncAllViews();
+            update3DStationStatusLights();
+            showToast('Đã kích hoạt cả 5 Tele Line!', 'Tất cả 5 băng chuyền đang nhận hàng từ API.');
+        }
+
+        function changeActiveHourSlot(slotIndex) {
+            appState.activeHourIndex = parseInt(slotIndex, 10);
+            saveAppState();
+            renderPICManagementPage();
+            syncAllViews();
+        }
+
+        // =========================================================================
+        // 4. API DATA STREAM SIMULATION & MANUAL PACKETS
+        // =========================================================================
+        function updateSyncTimestamp() {
+            const now = new Date();
+            appState.lastSyncTime = now.toTimeString().split(' ')[0];
+        }
+
+        function pushApiCountToLine(lineIndex, amount) {
+            const slot = appState.hourlySlots[appState.activeHourIndex];
+            if (!slot) return;
+            slot.counts[lineIndex] = (slot.counts[lineIndex] || 0) + amount;
+            updateSyncTimestamp();
+            saveAppState();
+
+            triggerBadgePopEffect(lineIndex, amount);
+            flashScannerGate3D(lineIndex);
+            updateFloatingBadgesContent();
+            renderDataSidebar();
+            updatePicRowLiveCountsOnly();
+        }
+
+        function simulateBulkApiBurst() {
+            appState.teleLines.forEach((line, idx) => {
+                if (line.status === 'ACTIVE') {
+                    const delta = Math.floor(Math.random() * 6) + 3;
+                    appState.hourlySlots[appState.activeHourIndex].counts[idx] += delta;
+                    triggerBadgePopEffect(idx, delta);
+                    flashScannerGate3D(idx);
+                }
+            });
+            updateSyncTimestamp();
+            saveAppState();
+            updateFloatingBadgesContent();
+            renderDataSidebar();
+            updatePicRowLiveCountsOnly();
+            showToast('Đồng bộ API thành công!', 'Số liệu từng Tele Line và số tổng giờ đã được cập nhật.');
+        }
+
+        function resetCurrentHourCounts() {
+            appState.hourlySlots[appState.activeHourIndex].counts = [0, 0, 0, 0, 0];
+            updateSyncTimestamp();
+            saveAppState();
+            syncAllViews();
+            showToast('Đã đặt lại số liệu giờ hiện tại', 'Số đếm của khung giờ đang chọn đã về 0.');
+        }
+
+        function toggleApiStream() {
+            appState.apiLivePolling = !appState.apiLivePolling;
+            const btnText = document.getElementById('stream-btn-text');
+            const btnDot = document.getElementById('stream-btn-dot');
+            const headerState = document.getElementById('header-api-state');
+            const headerDot = document.getElementById('api-status-dot');
+
+            if (appState.apiLivePolling) {
+                btnText.textContent = 'API Tự Động: BẬT';
+                btnDot.className = 'w-2 h-2 rounded-full bg-emerald-400';
+                headerState.textContent = 'LIVE SYNC (3s)';
+                headerState.className = 'font-semibold text-emerald-400';
+                headerDot.classList.remove('hidden');
+            } else {
+                btnText.textContent = 'API Tự Động: TẠM DỪNG';
+                btnDot.className = 'w-2 h-2 rounded-full bg-amber-400';
+                headerState.textContent = 'PAUSED';
+                headerState.className = 'font-semibold text-amber-400';
+                headerDot.classList.add('hidden');
+            }
+        }
+
+        function copyApiJsonPayload() {
+            const text = document.getElementById('json-payload-preview')?.textContent || '';
+            const temp = document.createElement('textarea');
+            temp.value = text;
+            document.body.appendChild(temp);
+            temp.select();
+            document.execCommand('copy');
+            document.body.removeChild(temp);
+            showToast('Đã sao chép cấu trúc JSON!', 'Bạn có thể dán để đối chiếu với đội Backend/API.');
+        }
+
+        function showToast(title, desc) {
+            const toast = document.getElementById('toast-notification');
+            document.getElementById('toast-title').textContent = title;
+            document.getElementById('toast-desc').textContent = desc;
+            toast.classList.remove('opacity-0', 'translate-y-3');
+            toast.classList.add('opacity-100', 'translate-y-0');
+
+            clearTimeout(window.__toastTimer);
+            window.__toastTimer = setTimeout(() => {
+                toast.classList.remove('opacity-100', 'translate-y-0');
+                toast.classList.add('opacity-0', 'translate-y-3');
+            }, 2600);
+        }
+
+        function syncAllViews() {
+            updateFloatingBadgesContent();
+            renderDataSidebar();
+            updatePicRowLiveCountsOnly();
+        }
+
+        // =========================================================================
+        // 5. THREE.JS 3D WAREHOUSE INBOUND CONVEYOR SYSTEM (5 TELE LINES)
+        // =========================================================================
+        let scene, camera, renderer, controls;
+        const labelAnchors3D = []; // 3D Object3D anchors for floating PIC badges
+        const teleBoxes3D = [];    // Moving boxes on the 5 Tele Lines
+        const mainBeltBoxes3D = []; // Merged boxes on the Main Conveyor
+        const stationBeacons = [];  // Status light meshes per line
+        const scannerBeams = [];    // Laser scanner meshes per line
+        const operatorAvatars = []; // Operator meshes for subtle animation
+
+        function init3DWarehouse() {
+            const container = document.getElementById('canvas-container');
+            const width = container.clientWidth || window.innerWidth;
+            const height = container.clientHeight || window.innerHeight;
+
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x090d16);
+            scene.fog = new THREE.FogExp2(0x090d16, 0.012);
+
+            camera = new THREE.PerspectiveCamera(42, width / height, 0.1, 300);
+            camera.position.set(0, 22, 26);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+            renderer.setSize(width, height);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            container.appendChild(renderer.domElement);
+
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.06;
+            controls.maxPolarAngle = Math.PI / 2 - 0.04;
+            controls.minDistance = 8;
+            controls.maxDistance = 65;
+            controls.target.set(0, 1, -2);
+
+            // Lighting
+            const ambientLight = new THREE.AmbientLight(0xdbeafe, 0.55);
+            scene.add(ambientLight);
+
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.9);
+            dirLight.position.set(18, 32, 22);
+            dirLight.castShadow = true;
+            dirLight.shadow.mapSize.width = 2048;
+            dirLight.shadow.mapSize.height = 2048;
+            dirLight.shadow.camera.left = -30;
+            dirLight.shadow.camera.right = 30;
+            dirLight.shadow.camera.top = 25;
+            dirLight.shadow.camera.bottom = -25;
+            scene.add(dirLight);
+
+            const rimLight = new THREE.DirectionalLight(0x38bdf8, 0.35);
+            rimLight.position.set(-20, 15, -18);
+            scene.add(rimLight);
+
+            // Warehouse Floor
+            const floorGeo = new THREE.PlaneGeometry(120, 80);
+            const floorMat = new THREE.MeshStandardMaterial({
+                color: 0x111827,
+                roughness: 0.85,
+                metalness: 0.15
+            });
+            const floor = new THREE.Mesh(floorGeo, floorMat);
+            floor.rotation.x = -Math.PI / 2;
+            floor.receiveShadow = true;
+            scene.add(floor);
+
+            const grid = new THREE.GridHelper(90, 45, 0x1e293b, 0x172033);
+            grid.position.y = 0.01;
+            scene.add(grid);
+
+            // Build Main Merging Conveyor Belt (Horizontal across Z = 5.5)
+            buildMainMergingConveyor();
+
+            // Build the 5 Inbound Telescopic Conveyor Lines
+            appState.teleLines.forEach((line, idx) => {
+                buildSingleTeleLine(line, idx);
+            });
+
+            // Initialize boxes on the main conveyor
+            const boxColors = [0xd97706, 0xb45309, 0xca8a04, 0x92400e];
+            for (let i = 0; i < 10; i++) {
+                const bGeo = new THREE.BoxGeometry(1.15, 0.85, 1.05);
+                const bMat = new THREE.MeshStandardMaterial({
+                    color: boxColors[i % boxColors.length],
+                    roughness: 0.65
+                });
+                const box = new THREE.Mesh(bGeo, bMat);
+                box.position.set(-22 + i * 4.5, 1.55, 5.5 + (Math.random() - 0.5) * 0.4);
+                box.castShadow = true;
+                scene.add(box);
+                mainBeltBoxes3D.push(box);
+            }
+
+            update3DStationStatusLights();
+        }
+
+        function buildMainMergingConveyor() {
+            const mainGroup = new THREE.Group();
+            const beltZ = 5.5;
+
+            // Conveyor frame
+            const frameGeo = new THREE.BoxGeometry(50, 1.1, 2.8);
+            const frameMat = new THREE.MeshStandardMaterial({ color: 0x334155, metalness: 0.4, roughness: 0.5 });
+            const frame = new THREE.Mesh(frameGeo, frameMat);
+            frame.position.set(1, 0.55, beltZ);
+            frame.castShadow = true;
+            frame.receiveShadow = true;
+            mainGroup.add(frame);
+
+            // Dark belt surface
+            const beltGeo = new THREE.BoxGeometry(49.6, 1.16, 2.2);
+            const beltMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.9 });
+            const belt = new THREE.Mesh(beltGeo, beltMat);
+            belt.position.set(1, 0.56, beltZ);
+            mainGroup.add(belt);
+
+            // Yellow safety stripe along main conveyor
+            const stripeGeo = new THREE.PlaneGeometry(50, 0.18);
+            const stripeMat = new THREE.MeshBasicMaterial({ color: 0xeab308 });
+            const stripeFront = new THREE.Mesh(stripeGeo, stripeMat);
+            stripeFront.rotation.x = -Math.PI / 2;
+            stripeFront.position.set(1, 0.02, beltZ + 2.1);
+            mainGroup.add(stripeFront);
+
+            // Outbound Sorting Arch on the right end (x = 24)
+            const archGeo = new THREE.BoxGeometry(1.5, 3.8, 3.6);
+            const archMat = new THREE.MeshStandardMaterial({ color: 0x0284c7, metalness: 0.5, roughness: 0.3 });
+            const arch = new THREE.Mesh(archGeo, archMat);
+            arch.position.set(24.5, 1.9, beltZ);
+            arch.castShadow = true;
+            mainGroup.add(arch);
+
+            scene.add(mainGroup);
+        }
+
+        function buildSingleTeleLine(line, idx) {
+            const x = line.xPos;
+            const group = new THREE.Group();
+            group.position.set(x, 0, 0);
+
+            // 1. Container / Dock Door at back (z = -13.5)
+            const dockWallGeo = new THREE.BoxGeometry(5.2, 5.2, 1.2);
+            const dockWallMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.7 });
+            const dockWall = new THREE.Mesh(dockWallGeo, dockWallMat);
+            dockWall.position.set(0, 2.6, -13.5);
+            dockWall.castShadow = true;
+            group.add(dockWall);
+
+            // Container Cavity
+            const cavityGeo = new THREE.BoxGeometry(3.6, 3.8, 0.8);
+            const cavityMat = new THREE.MeshStandardMaterial({ color: 0x090d16 });
+            const cavity = new THREE.Mesh(cavityGeo, cavityMat);
+            cavity.position.set(0, 1.9, -13.0);
+            group.add(cavity);
+
+            // Beacon status light above dock door
+            const beaconGeo = new THREE.SphereGeometry(0.32, 16, 16);
+            const beaconMat = new THREE.MeshBasicMaterial({ color: 0x10b981 });
+            const beacon = new THREE.Mesh(beaconGeo, beaconMat);
+            beacon.position.set(0, 4.6, -12.8);
+            group.add(beacon);
+            stationBeacons.push(beacon);
+
+            // 2. Telescopic Conveyor Boom (extending from z = -12.5 to z = 4.2)
+            const teleGeo = new THREE.BoxGeometry(1.9, 1.0, 16.5);
+            const teleMat = new THREE.MeshStandardMaterial({ color: 0x475569, metalness: 0.35, roughness: 0.55 });
+            const teleBase = new THREE.Mesh(teleGeo, teleMat);
+            teleBase.position.set(0, 0.5, -4.2);
+            teleBase.castShadow = true;
+            teleBase.receiveShadow = true;
+            group.add(teleBase);
+
+            const rollerTrackGeo = new THREE.BoxGeometry(1.45, 1.06, 16.2);
+            const rollerTrackMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.85 });
+            const rollerTrack = new THREE.Mesh(rollerTrackGeo, rollerTrackMat);
+            rollerTrack.position.set(0, 0.52, -4.2);
+            group.add(rollerTrack);
+
+            // Yellow safety zone around the Tele Line head (Đầu Line)
+            const zoneGeo = new THREE.PlaneGeometry(4.4, 4.4);
+            const zoneMat = new THREE.MeshBasicMaterial({ color: 0xfacc15, wireframe: true });
+            const zone = new THREE.Mesh(zoneGeo, zoneMat);
+            zone.rotation.x = -Math.PI / 2;
+            zone.position.set(0, 0.03, -9.2);
+            group.add(zone);
+
+            // 3. Barcode Scanner Gate Arch (at z = -1.5)
+            const gateGroup = new THREE.Group();
+            gateGroup.position.set(0, 0, -1.5);
+
+            const pillarGeo = new THREE.BoxGeometry(0.22, 2.6, 0.4);
+            const pillarMat = new THREE.MeshStandardMaterial({ color: 0x0ea5e9, metalness: 0.5, roughness: 0.2 });
+
+            const leftPillar = new THREE.Mesh(pillarGeo, pillarMat);
+            leftPillar.position.set(-1.05, 1.3, 0);
+            gateGroup.add(leftPillar);
+
+            const rightPillar = new THREE.Mesh(pillarGeo, pillarMat);
+            rightPillar.position.set(1.05, 1.3, 0);
+            gateGroup.add(rightPillar);
+
+            const topBarGeo = new THREE.BoxGeometry(2.35, 0.28, 0.45);
+            const topBar = new THREE.Mesh(topBarGeo, pillarMat);
+            topBar.position.set(0, 2.55, 0);
+            gateGroup.add(topBar);
+
+            // Scanner Laser Sheet
+            const laserGeo = new THREE.PlaneGeometry(1.8, 1.4);
+            const laserMat = new THREE.MeshBasicMaterial({
+                color: 0x22d3ee,
+                transparent: true,
+                opacity: 0.18,
+                side: THREE.DoubleSide
+            });
+            const laser = new THREE.Mesh(laserGeo, laserMat);
+            laser.position.set(0, 1.75, 0);
+            gateGroup.add(laser);
+            scannerBeams.push(laser);
+
+            group.add(gateGroup);
+
+            // 4. Operator Station & Avatar at "Đầu Line" (z = -9.2, x offset -1.85)
+            const opGroup = new THREE.Group();
+            opGroup.position.set(-1.75, 0, -9.0);
+
+            // Standing ergonomic mat
+            const matGeo = new THREE.BoxGeometry(1.4, 0.08, 1.8);
+            const matMesh = new THREE.Mesh(matGeo, new THREE.MeshStandardMaterial({ color: 0x334155 }));
+            matMesh.position.y = 0.04;
+            opGroup.add(matMesh);
+
+            // Operator Body (Safety Vest color matching line)
+            const bodyGeo = new THREE.CylinderGeometry(0.42, 0.46, 1.35, 16);
+            const bodyMat = new THREE.MeshStandardMaterial({ color: line.colorHex, roughness: 0.4 });
+            const body = new THREE.Mesh(bodyGeo, bodyMat);
+            body.position.y = 0.75;
+            body.castShadow = true;
+            opGroup.add(body);
+
+            // Operator Head
+            const headGeo = new THREE.SphereGeometry(0.34, 16, 16);
+            const headMat = new THREE.MeshStandardMaterial({ color: 0xfde68a });
+            const head = new THREE.Mesh(headGeo, headMat);
+            head.position.y = 1.68;
+            head.castShadow = true;
+            opGroup.add(head);
+
+            // Safety Hard Hat
+            const hatGeo = new THREE.SphereGeometry(0.37, 16, 12, 0, Math.PI * 2, 0, Math.PI / 1.8);
+            const hatMat = new THREE.MeshStandardMaterial({ color: 0xfacc15, roughness: 0.3 });
+            const hat = new THREE.Mesh(hatGeo, hatMat);
+            hat.position.y = 1.74;
+            opGroup.add(hat);
+
+            group.add(opGroup);
+            operatorAvatars.push(opGroup);
+
+            // 5. Floating Label Anchor right above Operator's head at Đầu Line
+            const labelAnchor = new THREE.Object3D();
+            labelAnchor.position.set(-0.6, 3.3, -9.0);
+            group.add(labelAnchor);
+            labelAnchors3D.push(labelAnchor);
+
+            // 6. Boxes moving along this Tele Line
+            const boxColors = [0xd97706, 0xb45309, 0xeab308];
+            for (let b = 0; b < 3; b++) {
+                const boxGeo = new THREE.BoxGeometry(1.0, 0.8, 1.0);
+                const boxMat = new THREE.MeshStandardMaterial({
+                    color: boxColors[(idx + b) % boxColors.length],
+                    roughness: 0.65
+                });
+                const box = new THREE.Mesh(boxGeo, boxMat);
+                const zStart = -11.5 + b * 5.0;
+                box.position.set(0, 1.45, zStart);
+                box.castShadow = true;
+                group.add(box);
+
+                teleBoxes3D.push({
+                    mesh: box,
+                    lineIndex: idx,
+                    passedGate: zStart > -1.5
+                });
+            }
+
+            scene.add(group);
+        }
+
+        function update3DStationStatusLights() {
+            appState.teleLines.forEach((line, idx) => {
+                const beacon = stationBeacons[idx];
+                const laser = scannerBeams[idx];
+                if (!beacon || !laser) return;
+
+                if (line.status === 'ACTIVE') {
+                    beacon.material.color.setHex(0x10b981);
+                    laser.material.opacity = 0.2;
+                } else if (line.status === 'PAUSED') {
+                    beacon.material.color.setHex(0xf59e0b);
+                    laser.material.opacity = 0.04;
+                } else {
+                    beacon.material.color.setHex(0xef4444);
+                    laser.material.opacity = 0.0;
+                }
+            });
+        }
+
+        function flashScannerGate3D(lineIndex) {
+            const laser = scannerBeams[lineIndex];
+            if (!laser) return;
+            laser.material.opacity = 0.75;
+            setTimeout(() => {
+                const status = appState.teleLines[lineIndex]?.status;
+                laser.material.opacity = status === 'ACTIVE' ? 0.2 : 0.04;
+            }, 220);
+        }
+
+        // Camera Presets
+        let targetCamPos = null;
+        let targetLookAt = null;
+
+        function setCameraView(preset) {
+            if (preset === 'overview') {
+                targetCamPos = new THREE.Vector3(0, 22, 26);
+                targetLookAt = new THREE.Vector3(0, 1, -2);
+            } else if (preset === 'heads') {
+                targetCamPos = new THREE.Vector3(0, 11, -1);
+                targetLookAt = new THREE.Vector3(0, 1.5, -9.5);
+            } else if (preset === 'merge') {
+                targetCamPos = new THREE.Vector3(-22, 12, 16);
+                targetLookAt = new THREE.Vector3(4, 1, 5.5);
+            }
+        }
+
+        function focusCameraOnLine(lineIndex) {
+            const line = appState.teleLines[lineIndex];
+            if (!line) return;
+            targetCamPos = new THREE.Vector3(line.xPos - 3, 7.5, -1.5);
+            targetLookAt = new THREE.Vector3(line.xPos, 1.5, -8.5);
+        }
+
+        // Project 3D Coordinates to 2D Floating HTML Labels
+        function updateFloatingLabelsProjection() {
+            const wrapper = document.getElementById('viewport-wrapper');
+            if (!wrapper || !camera) return;
+
+            const width = wrapper.clientWidth;
+            const height = wrapper.clientHeight;
+            if (width === 0 || height === 0) return;
+
+            const tempVec = new THREE.Vector3();
+
+            labelAnchors3D.forEach((anchor, idx) => {
+                const badgeEl = document.getElementById(`floating-badge-${idx}`);
+                if (!badgeEl) return;
+
+                anchor.getWorldPosition(tempVec);
+                tempVec.project(camera);
+
+                if (tempVec.z > 1) {
+                    badgeEl.style.opacity = '0';
+                    badgeEl.style.pointerEvents = 'none';
+                } else {
+                    const x = (tempVec.x * 0.5 + 0.5) * width;
+                    const y = (tempVec.y * -0.5 + 0.5) * height;
+                    badgeEl.style.opacity = '1';
+                    badgeEl.style.pointerEvents = 'auto';
+                    badgeEl.style.transform = `translate(-50%, -100%) translate(${x}px, ${y}px)`;
+                }
+            });
+        }
+
+        function handleWindowResize() {
+            const container = document.getElementById('canvas-container');
+            if (!container || !renderer || !camera) return;
+            const w = container.clientWidth;
+            const h = container.clientHeight;
+            if (w > 0 && h > 0) {
+                camera.aspect = w / h;
+                camera.updateProjectionMatrix();
+                renderer.setSize(w, h);
+            }
+        }
+
+        // =========================================================================
+        // 6. MAIN ANIMATION LOOP & REAL-TIME TIMERS
+        // =========================================================================
+        let clockTick = 0;
+
+        function animate3D() {
+            requestAnimationFrame(animate3D);
+            clockTick += 0.05;
+
+            // Smooth camera preset interpolation
+            if (targetCamPos && targetLookAt) {
+                camera.position.lerp(targetCamPos, 0.08);
+                controls.target.lerp(targetLookAt, 0.08);
+                if (camera.position.distanceTo(targetCamPos) < 0.15) {
+                    targetCamPos = null;
+                    targetLookAt = null;
+                }
+            }
+
+            controls.update();
+
+            // Move boxes along active Tele Lines
+            teleBoxes3D.forEach(item => {
+                const line = appState.teleLines[item.lineIndex];
+                if (line && line.status === 'ACTIVE') {
+                    item.mesh.position.z += 0.065;
+
+                    // Flash laser when box crosses z = -1.5
+                    if (!item.passedGate && item.mesh.position.z >= -1.5) {
+                        item.passedGate = true;
+                        flashScannerGate3D(item.lineIndex);
+                    }
+
+                    // Loop box back to container head when reaching main belt
+                    if (item.mesh.position.z > 4.2) {
+                        item.mesh.position.z = -11.8;
+                        item.passedGate = false;
+                    }
+                }
+            });
+
+            // Subtle working animation for active Operator Avatars
+            operatorAvatars.forEach((opGroup, idx) => {
+                const line = appState.teleLines[idx];
+                if (line && line.status === 'ACTIVE') {
+                    opGroup.rotation.y = Math.sin(clockTick + idx) * 0.18;
+                }
+            });
+
+            // Move merged boxes along the Main Conveyor Belt
+            mainBeltBoxes3D.forEach(box => {
+                box.position.x += 0.08;
+                if (box.position.x > 23.5) {
+                    box.position.x = -23.5;
+                }
+            });
+
+            updateFloatingLabelsProjection();
+            renderer.render(scene, camera);
+        }
+
+        // Start Everything on Load
+        window.onload = function () {
+            createFloatingBadgesDOM();
+            init3DWarehouse();
+            renderPICManagementPage();
+            syncAllViews();
+            animate3D();
+
+            window.addEventListener('resize', handleWindowResize);
+
+            // Observe viewport wrapper size changes
+            if (window.ResizeObserver) {
+                const ro = new ResizeObserver(() => handleWindowResize());
+                ro.observe(document.getElementById('viewport-wrapper'));
+            }
+
+            // Live Clock every 1s
+            setInterval(() => {
+                const now = new Date();
+                const clockEl = document.getElementById('live-clock');
+                if (clockEl) clockEl.textContent = now.toTimeString().split(' ')[0];
+            }, 1000);
+
+            // Simulated API Polling every 3 seconds
+            setInterval(() => {
+                if (!appState.apiLivePolling) return;
+
+                let anyUpdated = false;
+                appState.teleLines.forEach((line, idx) => {
+                    if (line.status === 'ACTIVE' && Math.random() > 0.25) {
+                        const inc = Math.floor(Math.random() * 3) + 1;
+                        appState.hourlySlots[appState.activeHourIndex].counts[idx] += inc;
+                        triggerBadgePopEffect(idx, inc);
+                        anyUpdated = true;
+                    }
+                });
+
+                if (anyUpdated) {
+                    updateSyncTimestamp();
+                    saveAppState();
+                    updateFloatingBadgesContent();
+                    renderDataSidebar();
+                    updatePicRowLiveCountsOnly();
+                }
+            }, 3000);
+        };
+    </script>
+</body>
+</html>
