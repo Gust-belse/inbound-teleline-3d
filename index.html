@@ -6,310 +6,113 @@
     <title>Hệ Thống Giám Sát Băng Chuyền Nhận - Inbound Tele Line 3D</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Google Fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700;800&display=swap" rel="stylesheet">
-    <!-- Three.js & OrbitControls -->
+    <!-- Three.js -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
-
     <style>
         * { box-sizing: border-box; }
         body {
             margin: 0; padding: 0;
-            font-family: 'Inter', sans-serif;
+            font-family: system-ui, -apple-system, sans-serif;
             background-color: #090d16;
             color: #f1f5f9;
             overflow: hidden;
             user-select: none;
         }
-        .font-mono-num {
-            font-family: 'JetBrains Mono', monospace;
-            font-variant-numeric: tabular-nums;
-        }
-        ::-webkit-scrollbar { width: 6px; height: 6px; }
-        ::-webkit-scrollbar-track { background: rgba(15, 23, 42, 0.6); }
-        ::-webkit-scrollbar-thumb { background: rgba(71, 85, 105, 0.8); border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: rgba(56, 189, 248, 0.8); }
-
+        .font-mono-num { font-variant-numeric: tabular-nums; font-family: monospace; }
         .tele-label {
             position: absolute; top: 0; left: 0;
             transform: translate(-50%, -100%);
             pointer-events: auto; cursor: pointer;
-            transition: border-color 0.2s, box-shadow 0.2s;
             z-index: 20; will-change: transform;
+            transition: opacity 0.1s;
         }
-        .tele-label::after {
-            content: ''; position: absolute; bottom: -7px; left: 50%;
-            transform: translateX(-50%);
-            border-width: 7px 6px 0; border-style: solid;
-            border-color: #0ea5e9 transparent transparent transparent;
-        }
-        @keyframes floatUpFade {
-            0% { opacity: 1; transform: translate(-50%, 0) scale(0.9); }
-            100% { opacity: 0; transform: translate(-50%, -26px) scale(1.15); }
-        }
-        .pop-counter { animation: floatUpFade 0.85s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
         .industrial-card {
-            background: rgba(15, 23, 42, 0.88);
+            background: rgba(15, 23, 42, 0.92);
             backdrop-filter: blur(12px);
-            border: 1px solid rgba(51, 65, 85, 0.75);
+            border: 1px solid rgba(51, 65, 85, 0.8);
         }
     </style>
 </head>
 <body class="h-screen w-screen flex flex-col bg-slate-950 text-slate-100">
 
-    <!-- ================= TOP NAVIGATION BAR ================= -->
-    <header class="h-14 bg-slate-900/95 border-b border-slate-800 px-4 flex items-center justify-between shrink-0 z-40 shadow-lg">
+    <!-- TOP NAVIGATION BAR -->
+    <header class="h-14 bg-slate-900 border-b border-slate-800 px-4 flex items-center justify-between shrink-0 z-40">
         <div class="flex items-center gap-3">
-            <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center shadow-md shadow-cyan-500/20 border border-cyan-400/30">
-                <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
-                </svg>
-            </div>
+            <div class="w-9 h-9 rounded-lg bg-cyan-500 flex items-center justify-center font-bold text-slate-950 shadow">3D</div>
             <div>
-                <div class="flex items-center gap-2">
-                    <h1 class="font-bold text-sm md:text-base tracking-tight text-white uppercase">Inbound Tele Line 3D</h1>
-                    <span class="hidden sm:inline-flex items-center px-2 py-0.5 rounded text-[10px] font-mono-num font-semibold bg-cyan-500/15 text-cyan-300 border border-cyan-500/30">WMS-API v2.4</span>
-                </div>
-                <p class="text-[11px] text-slate-400 hidden sm:block">Hệ Thống Giám Sát Băng Chuyền Nhận &amp; Điều Phối Nhân Sự Đầu Line</p>
+                <h1 class="font-bold text-sm text-white uppercase tracking-wide">Inbound Tele Line 3D</h1>
+                <p class="text-[11px] text-slate-400">Hệ Thống Giám Sát Băng Chuyền Nhận &amp; Điều Phối Vận Hành</p>
             </div>
         </div>
-
-        <div class="flex items-center bg-slate-950 p-1 rounded-xl border border-slate-800 gap-1">
-            <button id="tab-3d" onclick="switchViewMode('3d')" class="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 bg-cyan-600 text-white shadow">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 10l-2 1m0 0l-2-1m2 1v2.5M20 7l-2 1m2-1l-2-1m2 1v2.5M14 4l-2-1-2 1M4 7l2-1M4 7l2 1M4 7v2.5M12 21l-2-1m2 1l2-1m-2 1v-2.5M6 18l-2-1v-2.5M18 18l2-1v-2.5"/></svg>
-                <span>1. Màn Hình 3D &amp; Số Liệu</span>
-            </button>
-            <button id="tab-pic" onclick="switchViewMode('pic')" class="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 text-slate-400 hover:text-white hover:bg-slate-800/60">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-                <span>2. Trang Nhập Tên NV (PIC)</span>
-            </button>
+        <div class="flex items-center gap-2 bg-slate-950 p-1 rounded-xl border border-slate-800">
+            <button id="tab-3d" onclick="switchViewMode('3d')" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-cyan-600 text-white shadow">1. Màn Hình 3D &amp; Số Liệu</button>
+            <button id="tab-pic" onclick="switchViewMode('pic')" class="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-white">2. Trang Nhập Tên NV (PIC)</button>
         </div>
-
-        <div class="flex items-center gap-3">
-            <div class="hidden md:flex items-center gap-2 bg-slate-950/90 border border-slate-800 px-3 py-1.5 rounded-lg">
-                <span id="api-status-dot" class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping"></span>
-                <span id="api-status-dot-solid" class="w-2.5 h-2.5 rounded-full bg-emerald-500 -ml-4"></span>
-                <div class="text-[11px] leading-tight">
-                    <span class="text-slate-400">API:</span>
-                    <span id="header-api-state" class="font-semibold text-emerald-400">LIVE SYNC (3s)</span>
-                </div>
-            </div>
-            <div class="text-right hidden sm:block">
-                <div id="live-clock" class="font-mono-num text-xs font-bold text-slate-200">11:24:35</div>
-                <div id="current-shift-label" class="text-[10px] text-cyan-400 font-medium">Ca Sáng • Khung 11:00 - 12:00</div>
-            </div>
+        <div class="text-right hidden sm:block">
+            <div id="live-clock" class="font-mono-num text-xs font-bold text-slate-200">11:24:35</div>
+            <div class="text-[10px] text-cyan-400 font-medium">Ca Sáng • Trực tiếp API</div>
         </div>
     </header>
 
-    <!-- ================= MAIN WORKSPACE ================= -->
+    <!-- MAIN WORKSPACE -->
     <main class="flex-1 flex overflow-hidden relative">
 
-        <!-- SECTION A: PIC INPUT PAGE -->
-        <section id="pic-page-container" class="hidden h-full overflow-y-auto bg-slate-950 p-4 md:p-6 border-r border-slate-800 z-30">
-            <div class="max-w-5xl mx-auto space-y-6 pb-10">
-                <div class="industrial-card rounded-2xl p-5 border border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    <div>
-                        <div class="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs font-semibold mb-2">
-                            <span>TRANG DÀNH CHO PIC / TRƯỞNG CA INBOUND</span>
-                        </div>
-                        <h2 class="text-xl font-bold text-white">Phân Công Nhân Sự Đầu Line &amp; Cấu Hình API</h2>
-                        <p class="text-xs text-slate-400 mt-1">Nhập tên nhân viên thao tác tại từng đầu Tele Line. Dữ liệu sẽ đồng bộ tức thời lên mô hình 3D.</p>
-                    </div>
-                    <div class="flex flex-wrap items-center gap-2 shrink-0">
-                        <button onclick="applyStaffPreset('shiftA')" class="px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium border border-slate-700 transition">Mẫu Phân Ca 1</button>
-                        <button onclick="setAllLinesActive()" class="px-3 py-2 rounded-lg bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 text-xs font-semibold border border-emerald-500/30 transition">Bật Chạy Cả 5 Line</button>
-                    </div>
-                </div>
-
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div class="industrial-card p-4 rounded-xl">
-                        <label class="block text-[11px] uppercase tracking-wider text-slate-400 font-semibold mb-1.5">PIC Phụ Trách Ca</label>
-                        <input id="pic-supervisor-name" type="text" value="Trần Quốc Bảo (PIC Inbound)" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-cyan-500">
-                    </div>
-                    <div class="industrial-card p-4 rounded-xl">
-                        <label class="block text-[11px] uppercase tracking-wider text-slate-400 font-semibold mb-1.5">Khung Giờ Đang Nhận API</label>
-                        <select id="active-hour-select" onchange="changeActiveHourSlot(this.value)" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-cyan-300 font-mono-num font-semibold focus:outline-none focus:border-cyan-500">
-                            <option value="0">07:00 - 08:00</option>
-                            <option value="1">08:00 - 09:00</option>
-                            <option value="2">09:00 - 10:00</option>
-                            <option value="3">10:00 - 11:00</option>
-                            <option value="4" selected>11:00 - 12:00 (Hiện tại)</option>
-                        </select>
-                    </div>
-                    <div class="industrial-card p-4 rounded-xl flex items-center justify-between">
-                        <div>
-                            <div class="text-xs font-semibold text-white">Đồng bộ tức thời</div>
-                            <div class="text-[11px] text-slate-400">Tự động đẩy tên NV lên 3D</div>
-                        </div>
-                        <label class="relative inline-flex items-center cursor-pointer">
-                            <input type="checkbox" id="auto-sync-pic" checked class="sr-only peer">
-                            <div class="w-11 h-6 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-cyan-500"></div>
-                        </label>
-                    </div>
-                </div>
-
-                <div class="industrial-card rounded-2xl overflow-hidden border border-slate-800 shadow-xl">
-                    <div class="px-5 py-4 bg-slate-900/90 border-b border-slate-800 flex items-center justify-between">
-                        <div class="flex items-center gap-2">
-                            <span class="w-2.5 h-2.5 rounded-full bg-cyan-400"></span>
-                            <h3 class="font-bold text-sm text-white uppercase tracking-wide">Bảng Nhập Tên Người Thao Tác Đầu Line (Tele Line 01 ➔ 05)</h3>
-                        </div>
-                        <button onclick="saveAndSyncPIC()" class="px-4 py-2 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-bold text-xs shadow-lg shadow-cyan-500/20 flex items-center gap-2">
-                            <span>Lưu &amp; Đồng Bộ Lên Màn Hình 3D</span>
-                        </button>
-                    </div>
-                    <div class="overflow-x-auto">
-                        <table class="w-full text-left border-collapse">
-                            <thead>
-                                <tr class="bg-slate-900/60 text-[11px] uppercase tracking-wider text-slate-400 border-b border-slate-800">
-                                    <th class="py-3 px-4">Đầu Băng Chuyền</th>
-                                    <th class="py-3 px-4">Tên Người Thao Tác</th>
-                                    <th class="py-3 px-4">Mã Nhân Viên</th>
-                                    <th class="py-3 px-4">Định Mức / Giờ</th>
-                                    <th class="py-3 px-4">Trạng Thái Line</th>
-                                    <th class="py-3 px-4 text-right">Số Liệu API Hiện Tại</th>
-                                </tr>
-                            </thead>
-                            <tbody id="pic-form-rows" class="divide-y divide-slate-800/70 text-sm"></tbody>
-                        </table>
-                    </div>
+        <!-- PIC INPUT PAGE -->
+        <section id="pic-page-container" class="hidden h-full overflow-y-auto bg-slate-950 p-6 z-30 w-full">
+            <div class="max-w-4xl mx-auto space-y-4">
+                <div class="industrial-card p-5 rounded-2xl shadow-xl">
+                    <h2 class="text-base font-bold text-white mb-1">Phân Công Nhân Sự Đầu Line (PIC)</h2>
+                    <p class="text-xs text-slate-400 mb-4">Thay đổi tên nhân viên, mã nhân viên và định mức. Dữ liệu sẽ tự động đồng bộ lên mô hình 3D.</p>
+                    <div id="pic-form-rows" class="space-y-3"></div>
+                    <button onclick="saveAndSyncPIC()" class="mt-4 px-5 py-2.5 bg-cyan-600 hover:bg-cyan-500 text-white rounded-xl text-xs font-bold shadow-lg transition">Lưu &amp; Cập Nhật Lên 3D</button>
                 </div>
             </div>
         </section>
 
-        <!-- SECTION B: 3D DASHBOARD & DATA COLUMN -->
+        <!-- 3D VIEWPORT & DATA SIDEBAR -->
         <section id="dashboard-3d-container" class="flex-1 flex flex-col lg:flex-row h-full overflow-hidden relative">
-
-            <!-- 1. 3D VIEWPORT -->
-            <div id="viewport-wrapper" class="relative flex-1 h-[52vh] lg:h-full bg-slate-950 overflow-hidden select-none">
-                <div id="canvas-container" class="w-full h-full"></div>
+            
+            <!-- 3D CANVAS WRAPPER -->
+            <div id="viewport-wrapper" class="relative flex-1 h-full bg-slate-950 overflow-hidden">
+                <div id="canvas-container" class="w-full h-full absolute inset-0"></div>
                 <div id="labels-overlay-container" class="absolute inset-0 pointer-events-none overflow-hidden"></div>
-
-                <div class="absolute top-3 left-3 z-30 flex flex-wrap items-center gap-2 pointer-events-auto">
-                    <div class="industrial-card px-3 py-2 rounded-xl flex items-center gap-2 shadow-lg">
-                        <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Góc Nhìn 3D:</span>
-                        <button onclick="setCameraView('overview')" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-cyan-600 text-xs font-medium text-slate-200">Toàn Cảnh</button>
-                        <button onclick="setCameraView('heads')" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-cyan-600 text-xs font-medium text-slate-200">Đầu Line</button>
-                        <button onclick="setCameraView('merge')" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-cyan-600 text-xs font-medium text-slate-200">Băng Chuyền Chính</button>
-                    </div>
-                    <div class="industrial-card px-3 py-2 rounded-xl flex items-center gap-2 shadow-lg">
-                        <button onclick="simulateBulkApiBurst()" class="px-2.5 py-1 rounded-lg bg-cyan-600/20 border border-cyan-500/40 text-cyan-300 text-xs font-semibold">+ Đồng Bộ Nhanh</button>
-                    </div>
+                
+                <!-- Quick Controls -->
+                <div class="absolute top-3 left-3 z-30 flex gap-2">
+                    <button onclick="simulateBulkApiBurst()" class="px-3 py-1.5 rounded-xl bg-cyan-600/90 hover:bg-cyan-500 text-white text-xs font-semibold shadow-lg backdrop-blur border border-cyan-400/40 transition">+ Mô Phỏng Bắn Số Liệu API</button>
                 </div>
             </div>
 
-            <!-- 2. RIGHT DATA SIDEBAR -->
-            <aside class="w-full lg:w-[440px] xl:w-[480px] h-[48vh] lg:h-full bg-slate-900/95 border-t lg:border-t-0 lg:border-l border-slate-800 flex flex-col shrink-0 z-30 shadow-2xl">
-                <div class="px-4 py-3 bg-slate-950/80 border-b border-slate-800 flex items-center justify-between shrink-0">
-                    <div>
-                        <h2 class="font-bold text-sm text-white uppercase tracking-wider flex items-center gap-2">
-                            <svg class="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
-                            <span>Cột Số Liệu Vận Hành (API)</span>
-                        </h2>
-                        <p class="text-[11px] text-slate-400">PIC ca: <span id="sidebar-pic-supervisor" class="text-slate-200 font-medium">Trần Quốc Bảo</span></p>
-                    </div>
-                    <button onclick="switchViewMode('pic')" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-cyan-300 border border-slate-700 text-xs font-semibold">Đổi Tên NV</button>
+            <!-- RIGHT DATA SIDEBAR -->
+            <aside class="w-full lg:w-[440px] xl:w-[480px] h-full bg-slate-900 border-l border-slate-800 flex flex-col z-30 p-3 space-y-3 overflow-y-auto">
+                <div class="industrial-card p-3.5 rounded-xl shadow">
+                    <h2 class="text-xs font-bold uppercase tracking-wider text-cyan-400 mb-2.5 flex items-center justify-between">
+                        <span>Số Liệu Từng Tele Line &amp; PIC</span>
+                        <span class="text-[10px] text-slate-400">Đơn vị: Kiện</span>
+                    </h2>
+                    <div id="sidebar-teleline-rows" class="space-y-2"></div>
                 </div>
 
-                <div class="grid grid-cols-3 gap-2 p-3 bg-slate-950/50 border-b border-slate-800 shrink-0">
-                    <div class="bg-slate-900/90 border border-slate-800 rounded-xl p-2.5">
-                        <div class="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Giờ Hiện Tại</div>
-                        <div class="flex items-baseline gap-1 mt-0.5">
-                            <span id="kpi-current-hour-total" class="font-mono-num text-xl font-extrabold text-cyan-400">0</span>
-                            <span class="text-[10px] text-slate-400">kiện</span>
-                        </div>
-                    </div>
-                    <div class="bg-slate-900/90 border border-slate-800 rounded-xl p-2.5">
-                        <div class="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Tổng Lũy Kế</div>
-                        <div class="flex items-baseline gap-1 mt-0.5">
-                            <span id="kpi-shift-grand-total" class="font-mono-num text-xl font-extrabold text-emerald-400">0</span>
-                            <span class="text-[10px] text-slate-400">kiện</span>
-                        </div>
-                    </div>
-                    <div class="bg-slate-900/90 border border-slate-800 rounded-xl p-2.5">
-                        <div class="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Line Hoạt Động</div>
-                        <div class="flex items-baseline gap-1 mt-0.5">
-                            <span id="kpi-active-lines" class="font-mono-num text-xl font-extrabold text-amber-400">4/5</span>
-                            <span class="text-[10px] text-slate-400">line</span>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="flex-1 overflow-y-auto p-3 space-y-4">
-                    <div class="bg-slate-950/70 border border-slate-800 rounded-xl overflow-hidden">
-                        <div class="px-3.5 py-2.5 bg-slate-900 border-b border-slate-800">
-                            <span class="text-xs font-bold uppercase tracking-wider text-cyan-300">1. Số Liệu Từng Tele Line &amp; Nhân Viên</span>
-                        </div>
-                        <div class="overflow-x-auto">
-                            <table class="w-full text-left border-collapse">
-                                <thead>
-                                    <tr class="text-[10px] uppercase tracking-wider text-slate-400 bg-slate-900/40 border-b border-slate-800">
-                                        <th class="py-2 px-3">Line / Nhân Viên</th>
-                                        <th class="py-2 px-2 text-right">Giờ Hiện Tại</th>
-                                        <th class="py-2 px-2 text-right">Tổng Ca</th>
-                                        <th class="py-2 px-3 text-right">Tiến Độ</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="sidebar-teleline-rows" class="divide-y divide-slate-800/60 text-xs"></tbody>
-                            </table>
-                        </div>
-                    </div>
-
-                    <div class="bg-slate-950/70 border border-slate-800 rounded-xl overflow-hidden">
-                        <div class="px-3.5 py-2.5 bg-slate-900 border-b border-slate-800">
-                            <span class="text-xs font-bold uppercase tracking-wider text-emerald-300">2. Số Tổng Của Mỗi Giờ (Hourly Log)</span>
-                        </div>
-                        <div class="overflow-x-auto">
-                            <table class="w-full text-left border-collapse">
-                                <thead>
-                                    <tr class="text-[10px] uppercase tracking-wider text-slate-400 bg-slate-900/40 border-b border-slate-800">
-                                        <th class="py-2 px-3">Khung Giờ</th>
-                                        <th class="py-2 px-1.5 text-right text-slate-500">TL1</th>
-                                        <th class="py-2 px-1.5 text-right text-slate-500">TL2</th>
-                                        <th class="py-2 px-1.5 text-right text-slate-500">TL3</th>
-                                        <th class="py-2 px-1.5 text-right text-slate-500">TL4</th>
-                                        <th class="py-2 px-1.5 text-right text-slate-500">TL5</th>
-                                        <th class="py-2 px-3 text-right text-emerald-400 font-bold">Tổng Giờ</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="sidebar-hourly-rows" class="divide-y divide-slate-800/60 text-xs font-mono-num"></tbody>
-                            </table>
-                        </div>
-                    </div>
+                <div class="industrial-card p-3.5 rounded-xl shadow">
+                    <h2 class="text-xs font-bold uppercase tracking-wider text-emerald-400 mb-2.5">Số Tổng Mỗi Giờ (Hourly API Log)</h2>
+                    <div id="sidebar-hourly-rows" class="space-y-2 text-xs"></div>
                 </div>
             </aside>
         </section>
     </main>
 
-    <!-- TOAST -->
-    <div id="toast-notification" class="fixed bottom-5 right-5 z-50 pointer-events-none opacity-0 translate-y-3 transition-all duration-300">
-        <div class="bg-slate-900/95 border border-cyan-500/50 text-white px-4 py-3 rounded-xl shadow-2xl flex items-center gap-3">
-            <div class="w-7 h-7 rounded-lg bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center text-cyan-300">✓</div>
-            <div>
-                <div id="toast-title" class="text-xs font-bold text-white">Đã đồng bộ!</div>
-                <div id="toast-desc" class="text-[11px] text-slate-300">Cập nhật thành công.</div>
-            </div>
-        </div>
-    </div>
-
-    <!-- SCRIPT -->
+    <!-- CORE SCRIPT -->
     <script>
-        const STORAGE_KEY = 'INBOUND_TELELINE_STATE_V3';
-
-        const defaultState = {
-            supervisorName: 'Trần Quốc Bảo (PIC Inbound)',
+        const STORAGE_KEY = 'INBOUND_STATE_V5';
+        let appState = {
+            supervisorName: 'Trần Quốc Bảo',
             activeHourIndex: 4,
-            apiLivePolling: true,
-            lastSyncTime: '11:24:30',
             teleLines: [
-                { id: 'TL-01', name: 'TELE LINE 01', shortName: 'TL1', operatorName: 'Nguyễn Văn Hùng', staffId: 'NV-101', targetPerHour: 180, status: 'ACTIVE', colorHex: 0x06b6d4, xPos: -16 },
-                { id: 'TL-02', name: 'TELE LINE 02', shortName: 'TL2', operatorName: 'Lê Thị Mỹ Duyên', staffId: 'NV-108', targetPerHour: 180, status: 'ACTIVE', colorHex: 0x10b981, xPos: -8 },
-                { id: 'TL-03', name: 'TELE LINE 03', shortName: 'TL3', operatorName: 'Phạm Hoàng Nam', staffId: 'NV-114', targetPerHour: 200, status: 'ACTIVE', colorHex: 0x3b82f6, xPos: 0 },
-                { id: 'TL-04', name: 'TELE LINE 04', shortName: 'TL4', operatorName: 'Võ Minh Tuấn', staffId: 'NV-122', targetPerHour: 170, status: 'PAUSED', colorHex: 0xf59e0b, xPos: 8 },
-                { id: 'TL-05', name: 'TELE LINE 05', shortName: 'TL5', operatorName: 'Đặng Quốc Khánh', staffId: 'NV-139', targetPerHour: 190, status: 'ACTIVE', colorHex: 0x8b5cf6, xPos: 16 }
+                { id: 'TL-01', name: 'TELE LINE 01', operatorName: 'Nguyễn Văn Hùng', staffId: 'NV-101', targetPerHour: 180, status: 'ACTIVE', xPos: -14 },
+                { id: 'TL-02', name: 'TELE LINE 02', operatorName: 'Lê Thị Mỹ Duyên', staffId: 'NV-108', targetPerHour: 180, status: 'ACTIVE', xPos: -7 },
+                { id: 'TL-03', name: 'TELE LINE 03', operatorName: 'Phạm Hoàng Nam', staffId: 'NV-114', targetPerHour: 200, status: 'ACTIVE', xPos: 0 },
+                { id: 'TL-04', name: 'TELE LINE 04', operatorName: 'Võ Minh Tuấn', staffId: 'NV-122', targetPerHour: 170, status: 'ACTIVE', xPos: 7 },
+                { id: 'TL-05', name: 'TELE LINE 05', operatorName: 'Đặng Quốc Khánh', staffId: 'NV-139', targetPerHour: 190, status: 'ACTIVE', xPos: 14 }
             ],
             hourlySlots: [
                 { slot: '07:00 - 08:00', counts: [168, 174, 192, 155, 181] },
@@ -320,468 +123,280 @@
             ]
         };
 
-        let appState = loadAppState();
-        let currentViewMode = '3d';
-
-        function loadAppState() {
-            try {
-                const raw = localStorage.getItem(STORAGE_KEY);
-                if (raw) {
-                    const parsed = JSON.parse(raw);
-                    if (parsed && Array.isArray(parsed.teleLines) && Array.isArray(parsed.hourlySlots)) {
-                        return parsed;
-                    }
-                }
-            } catch (e) {
-                console.warn('Resetting state due to parse error:', e);
+        try {
+            const saved = localStorage.getItem(STORAGE_KEY);
+            if (saved) {
+                const parsed = JSON.parse(saved);
+                if (parsed && parsed.teleLines && parsed.hourlySlots) appState = parsed;
             }
-            return JSON.parse(JSON.stringify(defaultState));
+        } catch(e) {}
+
+        function saveState() {
+            try { localStorage.setItem(STORAGE_KEY, JSON.stringify(appState)); } catch(e) {}
         }
 
-        function saveAppState() {
-            try {
-                localStorage.setItem(STORAGE_KEY, JSON.stringify(appState));
-            } catch (e) {}
-        }
-
-        function getLineCurrentHourCount(idx) {
-            const slot = appState.hourlySlots[appState.activeHourIndex];
-            return slot ? (slot.counts[idx] || 0) : 0;
-        }
-
-        function getLineShiftTotal(idx) {
-            return appState.hourlySlots.reduce((acc, slot) => acc + (slot.counts[idx] || 0), 0);
-        }
-
-        function getHourSlotTotal(sIdx) {
-            const slot = appState.hourlySlots[sIdx];
-            return slot ? slot.counts.reduce((a, b) => a + b, 0) : 0;
-        }
-
-        function getGrandShiftTotal() {
-            return appState.hourlySlots.reduce((acc, _, idx) => acc + getHourSlotTotal(idx), 0);
+        function switchViewMode(mode) {
+            document.getElementById('pic-page-container').className = mode === 'pic' ? 'w-full h-full overflow-y-auto bg-slate-950 p-6 z-30' : 'hidden';
+            document.getElementById('dashboard-3d-container').className = mode === '3d' ? 'flex-1 flex flex-col lg:flex-row h-full overflow-hidden relative' : 'hidden';
+            document.getElementById('tab-3d').className = mode === '3d' ? 'px-3 py-1.5 rounded-lg text-xs font-semibold bg-cyan-600 text-white shadow' : 'px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-white';
+            document.getElementById('tab-pic').className = mode === 'pic' ? 'px-3 py-1.5 rounded-lg text-xs font-semibold bg-cyan-600 text-white shadow' : 'px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-white';
+            
+            if (mode === '3d' && renderer && camera) {
+                setTimeout(onWindowResize, 50);
+            }
         }
 
         function formatNum(n) { return Number(n || 0).toLocaleString('en-US'); }
 
-        function switchViewMode(mode) {
-            currentViewMode = mode;
-            const picContainer = document.getElementById('pic-page-container');
-            const dashContainer = document.getElementById('dashboard-3d-container');
-            const tab3d = document.getElementById('tab-3d');
-            const tabPic = document.getElementById('tab-pic');
-
-            const activeClass = 'px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 bg-cyan-600 text-white shadow';
-            const inactiveClass = 'px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 text-slate-400 hover:text-white hover:bg-slate-800/60';
-
-            tab3d.className = mode === '3d' ? activeClass : inactiveClass;
-            tabPic.className = mode === 'pic' ? activeClass : inactiveClass;
-
-            if (mode === '3d') {
-                picContainer.className = 'hidden';
-                dashContainer.className = 'flex-1 flex flex-col lg:flex-row h-full overflow-hidden relative';
-            } else {
-                picContainer.className = 'w-full h-full overflow-y-auto bg-slate-950 p-4 md:p-6 z-30';
-                dashContainer.className = 'hidden';
-            }
-            setTimeout(() => handleWindowResize(), 60);
-        }
-
-        function createFloatingBadgesDOM() {
-            const container = document.getElementById('labels-overlay-container');
-            container.innerHTML = '';
-            appState.teleLines.forEach((line, idx) => {
-                const badge = document.createElement('div');
-                badge.id = `floating-badge-${idx}`;
-                badge.className = 'tele-label bg-slate-900/95 border-2 border-cyan-500 rounded-xl px-3 py-2 shadow-2xl min-w-[168px] text-left';
-                badge.onclick = () => focusCameraOnLine(idx);
-                badge.innerHTML = `
-                    <div class="flex items-center justify-between gap-2 border-b border-slate-800 pb-1 mb-1">
-                        <span class="font-mono-num text-[11px] font-extrabold tracking-wider text-cyan-400">${line.name}</span>
-                        <span id="badge-status-${idx}" class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-500/20 text-emerald-300">Chạy</span>
+        function renderUI() {
+            // Sidebar Line Table
+            document.getElementById('sidebar-teleline-rows').innerHTML = appState.teleLines.map((l, i) => {
+                const cur = appState.hourlySlots[appState.activeHourIndex].counts[i];
+                const tot = appState.hourlySlots.reduce((sum, s) => sum + s.counts[i], 0);
+                return `<div class="bg-slate-950/70 p-2.5 rounded-xl border border-slate-800 flex justify-between items-center text-xs">
+                    <div>
+                        <span class="font-bold text-cyan-400">${l.name}</span>
+                        <div class="text-slate-200 text-[11px] font-medium mt-0.5">${l.operatorName} <span class="text-slate-500">(${l.staffId})</span></div>
                     </div>
-                    <div class="text-[10px] text-slate-400 uppercase tracking-wider">Nhân viên:</div>
-                    <div id="badge-operator-${idx}" class="text-xs font-bold text-white truncate max-w-[165px]">${line.operatorName}</div>
-                    <div class="flex items-center justify-between mt-1.5 pt-1 border-t border-slate-800/80 text-[11px] font-mono-num">
-                        <div><span class="text-slate-400">Giờ:</span> <span id="badge-hour-${idx}" class="font-bold text-cyan-300">0</span></div>
-                        <div><span class="text-slate-400">Tổng:</span> <span id="badge-total-${idx}" class="font-bold text-emerald-400">0</span></div>
+                    <div class="text-right font-mono-num">
+                        <span class="text-white font-bold text-sm">${formatNum(cur)}</span><span class="text-slate-500 text-[10px]"> /h</span>
+                        <div class="text-emerald-400 font-bold">Tổng: ${formatNum(tot)}</div>
                     </div>
-                    <div id="badge-pop-${idx}" class="pointer-events-none absolute -top-3 left-1/2 -translate-x-1/2"></div>
-                `;
-                container.appendChild(badge);
-            });
-        }
-
-        function updateFloatingBadgesContent() {
-            appState.teleLines.forEach((line, idx) => {
-                const badge = document.getElementById(`floating-badge-${idx}`);
-                if (!badge) return;
-                document.getElementById(`badge-operator-${idx}`).textContent = `${line.operatorName} (${line.staffId})`;
-                document.getElementById(`badge-hour-${idx}`).textContent = formatNum(getLineCurrentHourCount(idx));
-                document.getElementById(`badge-total-${idx}`).textContent = formatNum(getLineShiftTotal(idx));
-            });
-        }
-
-        function triggerBadgePopEffect(idx, amount) {
-            const pop = document.getElementById(`badge-pop-${idx}`);
-            if (!pop) return;
-            const span = document.createElement('div');
-            span.className = 'pop-counter px-2 py-0.5 rounded-full bg-emerald-500 text-slate-950 font-mono-num font-extrabold text-xs shadow-lg';
-            span.textContent = `+${amount} kiện`;
-            pop.appendChild(span);
-            setTimeout(() => span.remove(), 850);
-        }
-
-        function renderDataSidebar() {
-            const currentTotal = getHourSlotTotal(appState.activeHourIndex);
-            const grandTotal = getGrandShiftTotal();
-            const activeCount = appState.teleLines.filter(l => l.status === 'ACTIVE').length;
-
-            document.getElementById('sidebar-pic-supervisor').textContent = appState.supervisorName;
-            document.getElementById('kpi-current-hour-total').textContent = formatNum(currentTotal);
-            document.getElementById('kpi-shift-grand-total').textContent = formatNum(grandTotal);
-            document.getElementById('kpi-active-lines').textContent = `${activeCount}/5`;
-
-            document.getElementById('sidebar-teleline-rows').innerHTML = appState.teleLines.map((line, idx) => {
-                const hrCount = getLineCurrentHourCount(idx);
-                const totalCount = getLineShiftTotal(idx);
-                const pct = Math.min(100, Math.round((hrCount / Math.max(1, line.targetPerHour)) * 100));
-                return `
-                    <tr onclick="focusCameraOnLine(${idx})" class="hover:bg-slate-800/50 cursor-pointer transition">
-                        <td class="py-2.5 px-3">
-                            <div class="font-mono-num font-bold text-cyan-300">${line.name}</div>
-                            <div class="text-[11px] text-slate-200 font-medium">${line.operatorName}</div>
-                        </td>
-                        <td class="py-2.5 px-2 text-right font-mono-num font-bold text-white text-sm">${formatNum(hrCount)}</td>
-                        <td class="py-2.5 px-2 text-right font-mono-num font-bold text-emerald-400 text-sm">${formatNum(totalCount)}</td>
-                        <td class="py-2.5 px-3 text-right w-24">
-                            <div class="text-[10px] font-mono-num font-semibold text-slate-300 mb-1">${pct}%</div>
-                            <div class="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
-                                <div class="bg-cyan-500 h-full rounded-full" style="width: ${pct}%"></div>
-                            </div>
-                        </td>
-                    </tr>
-                `;
+                </div>`;
             }).join('');
 
-            document.getElementById('sidebar-hourly-rows').innerHTML = appState.hourlySlots.map((slotObj, sIdx) => {
-                const hrTotal = getHourSlotTotal(sIdx);
-                const isCurrent = sIdx === appState.activeHourIndex;
-                return `
-                    <tr class="${isCurrent ? 'bg-cyan-950/40 text-white font-semibold' : 'text-slate-300'}">
-                        <td class="py-2 px-3">${slotObj.slot}</td>
-                        <td class="py-2 px-1.5 text-right text-slate-400">${slotObj.counts[0]}</td>
-                        <td class="py-2 px-1.5 text-right text-slate-400">${slotObj.counts[1]}</td>
-                        <td class="py-2 px-1.5 text-right text-slate-400">${slotObj.counts[2]}</td>
-                        <td class="py-2 px-1.5 text-right text-slate-400">${slotObj.counts[3]}</td>
-                        <td class="py-2 px-1.5 text-right text-slate-400">${slotObj.counts[4]}</td>
-                        <td class="py-2 px-3 text-right font-bold text-emerald-400">${formatNum(hrTotal)}</td>
-                    </tr>
-                `;
+            // Sidebar Hourly Log Table
+            document.getElementById('sidebar-hourly-rows').innerHTML = appState.hourlySlots.map((s, idx) => {
+                const total = s.counts.reduce((a, b) => a + b, 0);
+                const isCurrent = idx === appState.activeHourIndex;
+                return `<div class="flex justify-between items-center bg-slate-950/50 px-3 py-2 rounded-lg border ${isCurrent ? 'border-cyan-500/60 bg-cyan-950/30 text-cyan-200 font-bold' : 'border-slate-800 text-slate-300'} font-mono-num">
+                    <span>${s.slot}</span>
+                    <span class="text-emerald-400 font-bold">${formatNum(total)} kiện</span>
+                </div>`;
             }).join('');
-        }
 
-        function renderPICManagementPage() {
-            document.getElementById('pic-supervisor-name').value = appState.supervisorName;
-            document.getElementById('active-hour-select').value = String(appState.activeHourIndex);
-
-            document.getElementById('pic-form-rows').innerHTML = appState.teleLines.map((line, idx) => `
-                <tr class="hover:bg-slate-900/40 transition">
-                    <td class="py-3 px-4 font-bold text-cyan-400">${line.name}</td>
-                    <td class="py-3 px-4"><input type="text" id="pic-op-name-${idx}" value="${line.operatorName}" oninput="collectPicFormValues()" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-sm text-white"></td>
-                    <td class="py-3 px-4"><input type="text" id="pic-staff-id-${idx}" value="${line.staffId}" oninput="collectPicFormValues()" class="w-28 bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-sm text-slate-200"></td>
-                    <td class="py-3 px-4"><input type="number" id="pic-target-${idx}" value="${line.targetPerHour}" oninput="collectPicFormValues()" class="w-24 bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-sm text-slate-200"></td>
-                    <td class="py-3 px-4">
-                        <select id="pic-status-${idx}" onchange="collectPicFormValues()" class="bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white">
-                            <option value="ACTIVE" ${line.status === 'ACTIVE' ? 'selected' : ''}>🟢 Hoạt động</option>
-                            <option value="PAUSED" ${line.status === 'PAUSED' ? 'selected' : ''}>🟡 Tạm nghỉ</option>
-                            <option value="MAINTENANCE" ${line.status === 'MAINTENANCE' ? 'selected' : ''}>🔴 Bảo trì</option>
-                        </select>
-                    </td>
-                    <td class="py-3 px-4 text-right font-mono-num text-xs text-cyan-400">${formatNum(getLineShiftTotal(idx))} kiện</td>
-                </tr>
+            // PIC Form Rows
+            document.getElementById('pic-form-rows').innerHTML = appState.teleLines.map((l, i) => `
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-2 bg-slate-900/90 p-3 rounded-xl border border-slate-800 text-xs items-center">
+                    <div>
+                        <span class="text-cyan-400 font-bold text-sm">${l.name}</span>
+                    </div>
+                    <div>
+                        <span class="text-slate-400 text-[10px] uppercase">Tên nhân viên</span>
+                        <input type="text" id="op-${i}" value="${l.operatorName}" class="mt-0.5 w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1.5 text-white">
+                    </div>
+                    <div class="flex gap-2">
+                        <div class="w-1/2">
+                            <span class="text-slate-400 text-[10px] uppercase">Mã NV</span>
+                            <input type="text" id="id-${i}" value="${l.staffId}" class="mt-0.5 w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1.5 text-white font-mono-num">
+                        </div>
+                        <div class="w-1/2">
+                            <span class="text-slate-400 text-[10px] uppercase">Định mức/h</span>
+                            <input type="number" id="tar-${i}" value="${l.targetPerHour}" class="mt-0.5 w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1.5 text-white font-mono-num">
+                        </div>
+                    </div>
+                </div>
             `).join('');
         }
 
-        function collectPicFormValues() {
-            appState.supervisorName = document.getElementById('pic-supervisor-name').value || 'PIC';
-            appState.teleLines.forEach((line, idx) => {
-                line.operatorName = document.getElementById(`pic-op-name-${idx}`)?.value || line.operatorName;
-                line.staffId = document.getElementById(`pic-staff-id-${idx}`)?.value || line.staffId;
-                line.targetPerHour = parseInt(document.getElementById(`pic-target-${idx}`)?.value, 10) || 180;
-                line.status = document.getElementById(`pic-status-${idx}`)?.value || 'ACTIVE';
-            });
-            saveAppState();
-            syncAllViews();
-        }
-
         function saveAndSyncPIC() {
-            collectPicFormValues();
-            showToast('Đã lưu & đồng bộ lên 3D!');
-        }
-
-        function applyStaffPreset() {
-            appState.teleLines[0].operatorName = 'Nguyễn Văn Hùng';
-            appState.teleLines[1].operatorName = 'Lê Thị Mỹ Duyên';
-            appState.teleLines[2].operatorName = 'Phạm Hoàng Nam';
-            appState.teleLines[3].operatorName = 'Võ Minh Tuấn';
-            appState.teleLines[4].operatorName = 'Đặng Quốc Khánh';
-            saveAppState();
-            renderPICManagementPage();
-            syncAllViews();
-            showToast('Đã áp dụng mẫu phân ca!');
-        }
-
-        function setAllLinesActive() {
-            appState.teleLines.forEach(l => l.status = 'ACTIVE');
-            saveAppState();
-            renderPICManagementPage();
-            syncAllViews();
-            showToast('Đã bật chạy cả 5 line!');
-        }
-
-        function changeActiveHourSlot(val) {
-            appState.activeHourIndex = parseInt(val, 10);
-            saveAppState();
-            syncAllViews();
+            appState.teleLines.forEach((l, i) => {
+                l.operatorName = document.getElementById(`op-${i}`).value || l.operatorName;
+                l.staffId = document.getElementById(`id-${i}`).value || l.staffId;
+                l.targetPerHour = parseInt(document.getElementById(`tar-${i}`).value, 10) || 180;
+            });
+            saveState();
+            renderUI();
+            updateBadgesDOM();
+            switchViewMode('3d');
         }
 
         function simulateBulkApiBurst() {
-            appState.teleLines.forEach((line, idx) => {
-                if (line.status === 'ACTIVE') {
-                    const inc = Math.floor(Math.random() * 5) + 2;
-                    appState.hourlySlots[appState.activeHourIndex].counts[idx] += inc;
-                    triggerBadgePopEffect(idx, inc);
-                }
+            appState.teleLines.forEach((_, i) => {
+                appState.hourlySlots[appState.activeHourIndex].counts[i] += Math.floor(Math.random() * 6) + 2;
             });
-            saveAppState();
-            syncAllViews();
-            showToast('Đã đồng bộ số liệu API!');
+            saveState();
+            renderUI();
+            updateBadgesDOM();
         }
 
-        function showToast(title) {
-            const toast = document.getElementById('toast-notification');
-            document.getElementById('toast-title').textContent = title;
-            toast.classList.remove('opacity-0', 'translate-y-3');
-            toast.classList.add('opacity-100', 'translate-y-0');
-            setTimeout(() => {
-                toast.classList.remove('opacity-100', 'translate-y-0');
-                toast.classList.add('opacity-0', 'translate-y-3');
-            }, 2000);
-        }
+        // --- THREE.JS 3D ENGINE ---
+        let scene, camera, renderer;
+        const labelAnchors = [];
+        const movingBoxes = [];
 
-        function syncAllViews() {
-            updateFloatingBadgesContent();
-            renderDataSidebar();
-        }
-
-        // ================= 3D WAREHOUSE ENGINE =================
-        let scene, camera, renderer, controls;
-        const labelAnchors3D = [];
-        const teleBoxes3D = [];
-        const mainBeltBoxes3D = [];
-
-        function init3DWarehouse() {
+        function init3D() {
             const container = document.getElementById('canvas-container');
-            const width = container.clientWidth || window.innerWidth;
-            const height = container.clientHeight || window.innerHeight;
+            const w = container.clientWidth || window.innerWidth;
+            const h = container.clientHeight || window.innerHeight;
 
             scene = new THREE.Scene();
             scene.background = new THREE.Color(0x090d16);
-            scene.fog = new THREE.FogExp2(0x090d16, 0.012);
 
-            camera = new THREE.PerspectiveCamera(42, width / height, 0.1, 300);
-            camera.position.set(0, 22, 26);
+            camera = new THREE.PerspectiveCamera(45, w / h, 0.1, 1000);
+            camera.position.set(0, 18, 28);
+            camera.lookAt(0, 0, 0);
 
             renderer = new THREE.WebGLRenderer({ antialias: true });
-            renderer.setSize(width, height);
+            renderer.setSize(w, h);
             renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-            renderer.shadowMap.enabled = true;
             container.appendChild(renderer.domElement);
 
-            controls = new THREE.OrbitControls(camera, renderer.domElement);
-            controls.enableDamping = true;
-            controls.dampingFactor = 0.06;
-            controls.maxPolarAngle = Math.PI / 2 - 0.04;
-            controls.target.set(0, 1, -2);
-
-            scene.add(new THREE.AmbientLight(0xdbeafe, 0.6));
+            // Lighting
+            scene.add(new THREE.AmbientLight(0xffffff, 0.7));
             const dirLight = new THREE.DirectionalLight(0xffffff, 0.9);
-            dirLight.position.set(18, 32, 22);
+            dirLight.position.set(15, 35, 20);
             scene.add(dirLight);
 
-            // Floor
-            const floor = new THREE.Mesh(
-                new THREE.PlaneGeometry(120, 80),
-                new THREE.MeshStandardMaterial({ color: 0x111827, roughness: 0.85 })
-            );
-            floor.rotation.x = -Math.PI / 2;
-            scene.add(floor);
-            scene.add(new THREE.GridHelper(90, 45, 0x1e293b, 0x172033));
+            // Floor Grid
+            scene.add(new THREE.GridHelper(70, 35, 0x1e293b, 0x111827));
 
-            // Main Belt
+            // Main Conveyor Belt (Băng chuyền chính ngang ở z = 4)
             const mainBelt = new THREE.Mesh(
-                new THREE.BoxGeometry(50, 1.1, 2.8),
-                new THREE.MeshStandardMaterial({ color: 0x334155 })
+                new THREE.BoxGeometry(44, 0.8, 2.4),
+                new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.4 })
             );
-            mainBelt.position.set(1, 0.55, 5.5);
+            mainBelt.position.set(0, 0.4, 4);
             scene.add(mainBelt);
 
-            // 5 Tele Lines
+            // 5 Tele Lines (5 nhánh băng chuyền nhận)
             appState.teleLines.forEach((line, idx) => {
-                buildSingleTeleLine(line, idx);
+                const group = new THREE.Group();
+                group.position.set(line.xPos, 0, 0);
+
+                // Thân nhánh băng chuyền
+                const branch = new THREE.Mesh(
+                    new THREE.BoxGeometry(1.6, 0.6, 12),
+                    new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.5 })
+                );
+                branch.position.set(0, 0.3, -2);
+                group.add(branch);
+
+                // Vị trí người thao tác (Đầu line)
+                const operatorMark = new THREE.Mesh(
+                    new THREE.CylinderGeometry(0.45, 0.45, 1.5, 16),
+                    new THREE.MeshStandardMaterial({ color: 0x06b6d4 })
+                );
+                operatorMark.position.set(-1.2, 0.7, -7);
+                group.add(operatorMark);
+
+                // Khung neo cho nhãn nổi HTML 3D
+                const anchor = new THREE.Object3D();
+                anchor.position.set(-1.2, 2.8, -7);
+                group.add(anchor);
+                labelAnchors.push(anchor);
+
+                // Kiện hàng chạy trên nhánh
+                const box = new THREE.Mesh(
+                    new THREE.BoxGeometry(0.85, 0.75, 0.85),
+                    new THREE.MeshStandardMaterial({ color: 0xf59e0b, roughness: 0.4 })
+                );
+                box.position.set(0, 0.9, -7 + idx * 2.2);
+                group.add(box);
+                movingBoxes.push({ mesh: box, zMin: -7, zMax: 4 });
+
+                scene.add(group);
             });
 
-            // Boxes on main belt
-            for (let i = 0; i < 10; i++) {
-                const box = new THREE.Mesh(
-                    new THREE.BoxGeometry(1.15, 0.85, 1.05),
-                    new THREE.MeshStandardMaterial({ color: 0xd97706 })
-                );
-                box.position.set(-22 + i * 4.5, 1.55, 5.5);
-                scene.add(box);
-                mainBeltBoxes3D.push(box);
-            }
+            createBadgesDOM();
+            window.addEventListener('resize', onWindowResize);
+            animate();
         }
 
-        function buildSingleTeleLine(line, idx) {
-            const x = line.xPos;
-            const group = new THREE.Group();
-            group.position.set(x, 0, 0);
-
-            // Dock wall
-            const wall = new THREE.Mesh(
-                new THREE.BoxGeometry(5.2, 5.2, 1.2),
-                new THREE.MeshStandardMaterial({ color: 0x1e293b })
-            );
-            wall.position.set(0, 2.6, -13.5);
-            group.add(wall);
-
-            // Tele boom
-            const tele = new THREE.Mesh(
-                new THREE.BoxGeometry(1.9, 1.0, 16.5),
-                new THREE.MeshStandardMaterial({ color: 0x475569 })
-            );
-            tele.position.set(0, 0.5, -4.2);
-            group.add(tele);
-
-            // Label anchor
-            const anchor = new THREE.Object3D();
-            anchor.position.set(-0.6, 3.3, -9.0);
-            group.add(anchor);
-            labelAnchors3D.push(anchor);
-
-            // Moving box
-            const box = new THREE.Mesh(
-                new THREE.BoxGeometry(1.0, 0.8, 1.0),
-                new THREE.MeshStandardMaterial({ color: 0xeab308 })
-            );
-            box.position.set(0, 1.45, -8.0 + idx * 2);
-            group.add(box);
-            teleBoxes3D.push({ mesh: box, lineIndex: idx });
-
-            scene.add(group);
+        function createBadgesDOM() {
+            const container = document.getElementById('labels-overlay-container');
+            container.innerHTML = '';
+            appState.teleLines.forEach((line, idx) => {
+                const div = document.createElement('div');
+                div.id = `badge-${idx}`;
+                div.className = 'tele-label industrial-card px-3 py-2 rounded-xl shadow-2xl text-xs border border-cyan-500/60 min-w-[145px]';
+                div.innerHTML = `
+                    <div class="font-bold text-cyan-400 text-[11px] mb-0.5">${line.name}</div>
+                    <div id="b-op-${idx}" class="text-white font-bold truncate max-w-[140px]">${line.operatorName}</div>
+                    <div class="text-[10px] text-emerald-400 font-mono-num mt-1 pt-1 border-t border-slate-800">Giờ hiện tại: <span id="b-hr-${idx}" class="font-bold">0</span></div>
+                `;
+                container.appendChild(div);
+            });
+            updateBadgesDOM();
         }
 
-        function setCameraView(preset) {
-            if (preset === 'overview') {
-                camera.position.set(0, 22, 26);
-                controls.target.set(0, 1, -2);
-            } else if (preset === 'heads') {
-                camera.position.set(0, 11, -1);
-                controls.target.set(0, 1.5, -9.5);
-            } else if (preset === 'merge') {
-                camera.position.set(-22, 12, 16);
-                controls.target.set(4, 1, 5.5);
-            }
+        function updateBadgesDOM() {
+            appState.teleLines.forEach((line, idx) => {
+                const opEl = document.getElementById(`b-op-${idx}`);
+                const hrEl = document.getElementById(`b-hr-${idx}`);
+                if (opEl) opEl.textContent = line.operatorName;
+                if (hrEl) hrEl.textContent = formatNum(appState.hourlySlots[appState.activeHourIndex].counts[idx]);
+            });
         }
 
-        function focusCameraOnLine(idx) {
-            const line = appState.teleLines[idx];
-            if (!line) return;
-            camera.position.set(line.xPos - 3, 7.5, -1.5);
-            controls.target.set(line.xPos, 1.5, -8.5);
-        }
+        function updateBadgesProjection() {
+            const container = document.getElementById('viewport-wrapper');
+            if (!container || !camera) return;
+            const w = container.clientWidth;
+            const h = container.clientHeight;
+            const v = new THREE.Vector3();
 
-        function updateFloatingLabelsProjection() {
-            const wrapper = document.getElementById('viewport-wrapper');
-            if (!wrapper || !camera) return;
-            const w = wrapper.clientWidth;
-            const h = wrapper.clientHeight;
-            if (w === 0 || h === 0) return;
-
-            const tempVec = new THREE.Vector3();
-            labelAnchors3D.forEach((anchor, idx) => {
-                const badge = document.getElementById(`floating-badge-${idx}`);
-                if (!badge) return;
-                anchor.getWorldPosition(tempVec);
-                tempVec.project(camera);
-                if (tempVec.z > 1) {
-                    badge.style.opacity = '0';
+            labelAnchors.forEach((anchor, idx) => {
+                const el = document.getElementById(`badge-${idx}`);
+                if (!el) return;
+                anchor.getWorldPosition(v);
+                v.project(camera);
+                if (v.z > 1) {
+                    el.style.opacity = '0';
                 } else {
-                    const x = (tempVec.x * 0.5 + 0.5) * w;
-                    const y = (tempVec.y * -0.5 + 0.5) * h;
-                    badge.style.opacity = '1';
-                    badge.style.transform = `translate(-50%, -100%) translate(${x}px, ${y}px)`;
+                    const x = (v.x * 0.5 + 0.5) * w;
+                    const y = (v.y * -0.5 + 0.5) * h;
+                    el.style.opacity = '1';
+                    el.style.transform = `translate(-50%, -100%) translate(${x}px, ${y}px)`;
                 }
             });
         }
 
-        function handleWindowResize() {
+        function onWindowResize() {
             const container = document.getElementById('canvas-container');
             if (!container || !renderer || !camera) return;
             const w = container.clientWidth;
             const h = container.clientHeight;
             if (w > 0 && h > 0) {
+                renderer.setSize(w, h);
                 camera.aspect = w / h;
                 camera.updateProjectionMatrix();
-                renderer.setSize(w, h);
             }
         }
 
-        function animate3D() {
-            requestAnimationFrame(animate3D);
-            controls.update();
+        function animate() {
+            requestAnimationFrame(animate);
 
-            teleBoxes3D.forEach(item => {
-                item.mesh.position.z += 0.065;
-                if (item.mesh.position.z > 4.2) item.mesh.position.z = -11.8;
+            // Chạy kiện hàng đều đặn trên băng chuyền
+            movingBoxes.forEach(b => {
+                b.mesh.position.z += 0.055;
+                if (b.mesh.position.z > 3.8) b.mesh.position.z = -7;
             });
 
-            mainBeltBoxes3D.forEach(box => {
-                box.position.x += 0.08;
-                if (box.position.x > 23.5) box.position.x = -23.5;
-            });
-
-            updateFloatingLabelsProjection();
+            updateBadgesProjection();
             renderer.render(scene, camera);
         }
 
-        window.onload = function () {
-            createFloatingBadgesDOM();
-            init3DWarehouse();
-            renderPICManagementPage();
-            syncAllViews();
-            animate3D();
-
-            window.addEventListener('resize', handleWindowResize);
-            setTimeout(handleWindowResize, 100);
-
-            // Clock & Auto poll
+        window.onload = function() {
+            renderUI();
+            init3D();
+            
+            // Đồng hồ thời gian thực
             setInterval(() => {
                 const now = new Date();
                 document.getElementById('live-clock').textContent = now.toTimeString().split(' ')[0];
             }, 1000);
 
+            // Tự động giả lập API nhảy số liệu mỗi 3 giây
             setInterval(() => {
-                if (!appState.apiLivePolling) return;
-                appState.teleLines.forEach((line, idx) => {
-                    if (line.status === 'ACTIVE' && Math.random() > 0.3) {
-                        appState.hourlySlots[appState.activeHourIndex].counts[idx] += 1;
+                appState.teleLines.forEach((_, i) => {
+                    if (Math.random() > 0.35) {
+                        appState.hourlySlots[appState.activeHourIndex].counts[i] += 1;
                     }
                 });
-                saveAppState();
-                syncAllViews();
+                saveState();
+                renderUI();
+                updateBadgesDOM();
             }, 3000);
         };
     </script>
